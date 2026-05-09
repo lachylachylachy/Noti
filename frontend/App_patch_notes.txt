@@ -1,0 +1,10 @@
+// Add this import in App.tsx
+import TodayWorkspace from "./workspaces/TodayWorkspace";
+
+// Add "today" to your Workspace type.
+
+// Add this renderer:
+{activeWorkspace === "today" && <TodayWorkspace />}
+
+// Make the Today sidebar button call:
+setActiveWorkspace("today")
