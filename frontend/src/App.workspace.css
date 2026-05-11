@@ -25,6 +25,8 @@ body,
   width: 100%;
   height: 100%;
   margin: 0;
+  padding: 0;
+  overflow: hidden;
   background: transparent;
 }
 
@@ -40,19 +42,20 @@ button {
 }
 
 .app-shell {
+  position: fixed;
+  inset: 0;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
   background: transparent;
-  position: relative;
 }
 
 .floating-stage {
   width: 100vw;
   height: 100vh;
-  padding: 32px;
+  padding: 0;
   display: grid;
-  place-items: center;
+  place-items: stretch;
   background:
     radial-gradient(circle at 50% 18%, rgba(120, 96, 180, 0.22), transparent 34%),
     radial-gradient(circle at 78% 70%, rgba(40, 80, 120, 0.14), transparent 34%),
@@ -61,11 +64,12 @@ button {
 
 .workspace-card {
   position: relative;
-  width: min(1080px, calc(100vw - 96px));
-  min-height: min(740px, calc(100vh - 86px));
-  max-height: calc(100vh - 74px);
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  max-height: 100vh;
   padding: 18px 22px 24px;
-  border-radius: 28px;
+  border-radius: 0;
   border: 1px solid rgba(255, 255, 255, 0.15);
   background:
     linear-gradient(180deg, rgba(42, 39, 54, 0.54), rgba(12, 14, 22, 0.5)),
@@ -1156,10 +1160,6 @@ button {
 }
 
 @media (max-width: 1150px) {
-  .workspace-card {
-    width: calc(100vw - 48px);
-  }
-
   .workspace-main {
     padding-left: 28px;
     padding-right: 28px;
@@ -1203,4 +1203,39 @@ button {
   .bottom-composer .composer-icon-button:nth-of-type(2) {
     display: none;
   }
+}
+/* Sidebar clickability hardening */
+.workspace-logo {
+  border: 1px solid rgba(160, 130, 255, 0.2);
+  cursor: pointer;
+  position: relative;
+  z-index: 1001;
+}
+
+.workspace-sidebar {
+  pointer-events: none;
+}
+
+.workspace-sidebar-open {
+  pointer-events: auto;
+}
+
+.workspace-sidebar button,
+.workspace-sidebar input,
+.sidebar-scrim {
+  pointer-events: auto;
+}
+
+.sidebar-scrim {
+  cursor: default;
+}
+
+.pinned-item {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sidebar-footer-state {
+  margin-top: auto;
 }
