@@ -187,6 +187,8 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [codeRailVisible, setCodeRailVisible] = useState(false);
+  const codeRailHideTimer = useRef<number | null>(null);
   const [activeEnvironment, setActiveEnvironment] = useState<AppEnvironment>("noti");
   const [codeSection, setCodeSection] = useState<
     "Home" | "Sessions" | "Snippets" | "Snapshots" | "Integrations"
@@ -298,6 +300,37 @@ function App() {
     }
 
     appWindow.startDragging();
+  }
+
+  function revealCodeRail() {
+    if (activeEnvironment !== "code") return;
+    if (codeRailHideTimer.current) {
+      window.clearTimeout(codeRailHideTimer.current);
+      codeRailHideTimer.current = null;
+    }
+    setCodeRailVisible(true);
+  }
+
+  function softlyHideCodeRail() {
+    if (activeEnvironment !== "code" || sidebarOpen) return;
+    if (codeRailHideTimer.current) {
+      window.clearTimeout(codeRailHideTimer.current);
+    }
+    codeRailHideTimer.current = window.setTimeout(() => {
+      setCodeRailVisible(false);
+      codeRailHideTimer.current = null;
+    }, 260);
+  }
+
+  function collapseSidebarChrome() {
+    setWorkspaceMenuOpen(null);
+    setThreadMenuOpen(null);
+    setAddSpaceOpen(false);
+    setProfileOpen(false);
+    setSidebarOpen(false);
+    if (activeEnvironment === "code") {
+      setCodeRailVisible(false);
+    }
   }
 
   function closeTransientUi() {
@@ -586,12 +619,19 @@ function App() {
     >
       <section
         className="floating-stage"
+        onMouseMove={(event) => {
+          const stageBounds = event.currentTarget.getBoundingClientRect();
+          if (activeEnvironment === "code" && !sidebarOpen && event.clientX - stageBounds.left <= 28) {
+            revealCodeRail();
+          }
+        }}
         onMouseDown={() => {
           closeTransientUi();
+          collapseSidebarChrome();
         }}
       >
         <div
-          className={`workspace-card ${activeEnvironment === "code" ? "workspace-code-space code-environment" : `workspace-${activeWorkspace.toLowerCase()}`} ${sidebarOpen ? "sidebar-expanded" : "sidebar-collapsed"}` }
+          className={`workspace-card ${activeEnvironment === "code" ? "workspace-code-space code-environment" : `workspace-${activeWorkspace.toLowerCase()}`} ${sidebarOpen ? "sidebar-expanded" : "sidebar-collapsed"} ${activeEnvironment === "code" && (codeRailVisible || sidebarOpen) ? "code-rail-peek" : ""}` }
           onMouseDown={(event) => {
             event.stopPropagation();
             const target = event.target as HTMLElement;
@@ -601,8 +641,9 @@ function App() {
               setWorkspaceMenuOpen(null);
               setThreadMenuOpen(null);
               setAddSpaceOpen(false);
-              if (activeEnvironment === "noti" && activeWorkspace !== "Notes") {
-                setSidebarOpen(false);
+              setSidebarOpen(false);
+              if (activeEnvironment === "code") {
+                setCodeRailVisible(false);
               }
             }
           }}
@@ -687,8 +728,10 @@ function App() {
           </header>
 
           <aside
-            className="workspace-sidebar-rail"
+            className={`workspace-sidebar-rail ${activeEnvironment === "code" && !(codeRailVisible || sidebarOpen) ? "code-rail-hidden" : ""}`}
             aria-label="Integrated applications rail"
+            onMouseEnter={revealCodeRail}
+            onMouseLeave={softlyHideCodeRail}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <button
@@ -698,6 +741,7 @@ function App() {
               title="Noti"
               onClick={() => {
                 setActiveEnvironment("noti");
+                setCodeRailVisible(false);
                 setSidebarOpen(true);
               }}
             >
@@ -711,7 +755,8 @@ function App() {
               title="Noti Code"
               onClick={() => {
                 setActiveEnvironment("code");
-                setSidebarOpen(true);
+                setCodeRailVisible(true);
+                setSidebarOpen(false);
                 setSelectedThreadId(null);
               }}
             >
@@ -727,6 +772,7 @@ function App() {
               aria-label={activeEnvironment === "code" ? "Add integration" : "Add workspace"}
               onClick={() => {
                 setSidebarOpen(true);
+                setCodeRailVisible(true);
                 if (activeEnvironment === "noti") {
                   setAddSpaceOpen((current) => !current);
                 }
@@ -739,6 +785,7 @@ function App() {
           <aside
             className={`workspace-sidebar-drawer ${sidebarOpen ? "workspace-sidebar-drawer-open" : ""}`}
             aria-hidden={!sidebarOpen}
+            onMouseEnter={() => { if (activeEnvironment === "code") setCodeRailVisible(true); }}
             onMouseDown={(event) => event.stopPropagation()}
           >
             {activeEnvironment === "code" ? (
@@ -1135,6 +1182,8 @@ function App() {
               </>
             ) : activeWorkspace === "Calendar" ? (
               <CalendarWorkspace threads={threads} />
+            ) : activeWorkspace === "Reminders" ? (
+              <RemindersWorkspace threads={threads} />
             ) : (
               <WorkspacePreview
                 workspace={activeWorkspace}
@@ -1243,19 +1292,38 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
     source: "calendar" | "note" | "reminder";
     notes: string;
     thread?: NoteThread;
+    recurrence?: "None" | "Daily" | "Weekly" | "Monthly";
+    reminder?: "None" | "At time" | "15 minutes before" | "1 hour before";
   };
 
-  type EventDraft = Pick<CalendarEvent, "title" | "date" | "start" | "end" | "tone" | "notes">;
+  type EventDraft = Pick<CalendarEvent, "title" | "date" | "start" | "end" | "tone" | "notes"> & {
+    recurrence: "None" | "Daily" | "Weekly" | "Monthly";
+    reminder: "None" | "At time" | "15 minutes before" | "1 hour before";
+  };
+
+  type CalendarAnnotation = {
+    id: string;
+    view: "Day" | "Week" | "Month" | "Agenda";
+    anchor: string;
+    text: string;
+    x: number;
+    y: number;
+  };
 
   const START_HOUR = 6;
   const END_HOUR = 23;
   const DAY_COUNT = 7;
-  const STORAGE_KEY = "noti-calendar-events-v2";
-  const NOTES_KEY = "noti-calendar-event-notes-v1";
-  const HIDDEN_KEY = "noti-calendar-hidden-events-v1";
+  const STORAGE_KEY = "noti-calendar-events-v3";
+  const NOTES_KEY = "noti-calendar-event-notes-v2";
+  const HIDDEN_KEY = "noti-calendar-hidden-events-v2";
+  const ANNOTATIONS_KEY = "noti-calendar-annotations-v1";
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [view, setView] = useState<"Day" | "Week" | "Month" | "Agenda">("Week");
-  const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
+  const [anchorDate, setAnchorDate] = useState(() => {
+    const value = new Date();
+    value.setHours(0, 0, 0, 0);
+    return value;
+  });
   const [events, setEvents] = useState<CalendarEvent[]>(() => loadCalendarEvents(STORAGE_KEY));
   const [hiddenEventIds, setHiddenEventIds] = useState<string[]>(() => loadStringList(HIDDEN_KEY));
   const [eventNotes, setEventNotes] = useState<Record<string, string>>(() => loadRecord(NOTES_KEY));
@@ -1263,9 +1331,17 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
   const [draft, setDraft] = useState<EventDraft | null>(null);
   const [panelTab, setPanelTab] = useState<"Notes" | "Files" | "Links" | "Tasks">("Notes");
   const [calendarMotion, setCalendarMotion] = useState<"idle" | "next" | "prev">("idle");
-
+  const [density, setDensity] = useState<"Compact" | "Comfortable" | "Expanded">("Compact");
+  const [filter, setFilter] = useState<"All" | "Calendar" | "Notes" | "Reminders">("All");
+  const [quickText, setQuickText] = useState("");
+  const [creatingSlot, setCreatingSlot] = useState<{ date: string; start: string; end: string } | null>(null);
+  const [drawMode, setDrawMode] = useState(false);
+  const [annotations, setAnnotations] = useState<CalendarAnnotation[]>(() => loadCalendarAnnotations(ANNOTATIONS_KEY));
+  const gridRef = useRef<HTMLDivElement | null>(null);
   const today = new Date();
   const todayIso = toISODate(today);
+  const weekStart = useMemo(() => getMonday(anchorDate), [anchorDate]);
+
   const weekDays = useMemo(() => {
     return Array.from({ length: DAY_COUNT }, (_, index) => {
       const date = new Date(weekStart);
@@ -1281,14 +1357,18 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
 
   const displayedDays = useMemo(() => {
     if (view === "Day") {
-      const current = weekDays.find((day) => day.isToday) ?? weekDays[0];
-      return [current];
+      return [{
+        label: anchorDate.toLocaleDateString(undefined, { weekday: "short" }),
+        number: anchorDate.getDate(),
+        iso: toISODate(anchorDate),
+        isToday: anchorDate.toDateString() === today.toDateString(),
+      }];
     }
     return weekDays;
-  }, [view, weekDays]);
+  }, [view, weekDays, anchorDate, todayIso]);
 
   const monthDays = useMemo(() => {
-    const first = new Date(weekStart.getFullYear(), weekStart.getMonth(), 1);
+    const first = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
     const start = getMonday(first);
     return Array.from({ length: 42 }, (_, index) => {
       const date = new Date(start);
@@ -1296,11 +1376,11 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
       return {
         iso: toISODate(date),
         number: date.getDate(),
-        inMonth: date.getMonth() === weekStart.getMonth(),
+        inMonth: date.getMonth() === anchorDate.getMonth(),
         isToday: date.toDateString() === today.toDateString(),
       };
     });
-  }, [weekStart, todayIso]);
+  }, [anchorDate, todayIso]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
@@ -1313,6 +1393,10 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
   useEffect(() => {
     localStorage.setItem(HIDDEN_KEY, JSON.stringify(hiddenEventIds));
   }, [hiddenEventIds]);
+
+  useEffect(() => {
+    localStorage.setItem(ANNOTATIONS_KEY, JSON.stringify(annotations));
+  }, [annotations]);
 
   const scheduledEvents = useMemo<CalendarEvent[]>(() => {
     return threads
@@ -1335,6 +1419,8 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
             thread.messages.find((message) => message.role === "user")?.text ||
             "Linked Noti note.",
           thread,
+          recurrence: "None",
+          reminder: "At time",
         };
       });
   }, [threads, eventNotes, todayIso]);
@@ -1344,52 +1430,62 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
       .filter((event) => !hiddenEventIds.includes(event.id))
       .map((event) => ({ ...event, notes: eventNotes[event.id] ?? event.notes }));
 
-    return merged.sort((a, b) => {
+    const sourceFiltered = filter === "All" ? merged : merged.filter((event) => {
+      if (filter === "Calendar") return event.source === "calendar";
+      if (filter === "Notes") return event.source === "note";
+      return event.source === "reminder";
+    });
+
+    return sourceFiltered.sort((a, b) => {
       const dateCompare = a.date.localeCompare(b.date);
       if (dateCompare !== 0) return dateCompare;
       return timeToMinutes(a.start) - timeToMinutes(b.start);
     });
-  }, [events, scheduledEvents, eventNotes, hiddenEventIds]);
+  }, [events, scheduledEvents, eventNotes, hiddenEventIds, filter]);
 
+  const currentAnnotationAnchor = view === "Month"
+    ? `${anchorDate.getFullYear()}-${anchorDate.getMonth() + 1}`
+    : view === "Day"
+      ? toISODate(anchorDate)
+      : toISODate(weekStart);
+  const visibleAnnotations = annotations.filter((annotation) => annotation.view === view && annotation.anchor === currentAnnotationAnchor);
   const visibleEvents = allEvents.filter((event) => displayedDays.some((day) => day.iso === event.date));
   const selectedEvent = allEvents.find((event) => event.id === selectedEventId) ?? null;
   const contextOpen = Boolean(selectedEvent);
-  const upcoming = allEvents.filter((event) => event.date >= todayIso).slice(0, 6);
+  const upcoming = allEvents.filter((event) => event.date >= todayIso).slice(0, 8);
 
   const endOfWeek = new Date(weekStart);
   endOfWeek.setDate(weekStart.getDate() + 6);
   const rangeLabel =
     view === "Month"
-      ? weekStart.toLocaleDateString(undefined, { month: "long", year: "numeric" })
+      ? anchorDate.toLocaleDateString(undefined, { month: "long", year: "numeric" })
       : view === "Day"
-        ? displayedDays[0]?.iso
-          ? new Date(`${displayedDays[0].iso}T12:00:00`).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short", year: "numeric" })
-          : "Today"
+        ? anchorDate.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short", year: "numeric" })
         : `${weekStart.toLocaleDateString(undefined, { day: "numeric", month: "short" })} – ${endOfWeek.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}`;
   const nowMinutes = today.getHours() * 60 + today.getMinutes();
-  const showNow = weekDays.some((day) => day.isToday) && nowMinutes >= START_HOUR * 60 && nowMinutes <= END_HOUR * 60;
+  const showNow = displayedDays.some((day) => day.isToday) && nowMinutes >= START_HOUR * 60 && nowMinutes <= END_HOUR * 60;
   const nowTop = minutesToTop(nowMinutes, START_HOUR, END_HOUR);
+  const densityClass = `calendar-density-${density.toLowerCase()}`;
 
-  function moveWeek(direction: -1 | 1) {
+  function moveCalendar(direction: -1 | 1) {
     setCalendarMotion(direction === 1 ? "next" : "prev");
-    setWeekStart((current) => {
+    setAnchorDate((current) => {
       const next = new Date(current);
-      if (view === "Month") {
-        next.setMonth(current.getMonth() + direction);
-        return getMonday(next);
-      }
-      next.setDate(current.getDate() + direction * DAY_COUNT);
-      return getMonday(next);
+      if (view === "Day") next.setDate(current.getDate() + direction);
+      else if (view === "Week" || view === "Agenda") next.setDate(current.getDate() + direction * DAY_COUNT);
+      else next.setMonth(current.getMonth() + direction);
+      return next;
     });
     closeEventPanel();
     window.setTimeout(() => setCalendarMotion("idle"), 360);
   }
 
   function jumpToToday() {
-    const todayWeek = getMonday(new Date());
-    const direction = todayWeek.getTime() > weekStart.getTime() ? "next" : todayWeek.getTime() < weekStart.getTime() ? "prev" : "idle";
+    const target = new Date();
+    target.setHours(0, 0, 0, 0);
+    const direction = target.getTime() > anchorDate.getTime() ? "next" : target.getTime() < anchorDate.getTime() ? "prev" : "idle";
     setCalendarMotion(direction);
-    setWeekStart(todayWeek);
+    setAnchorDate(target);
     closeEventPanel();
     window.setTimeout(() => setCalendarMotion("idle"), direction === "idle" ? 0 : 360);
   }
@@ -1409,23 +1505,33 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
     setDraft(toEventDraft(event));
   }
 
-  function createEvent() {
-    const date = displayedDays.find((day) => day.isToday)?.iso ?? displayedDays[0]?.iso ?? todayIso;
+  function createEvent(overrides?: Partial<CalendarEvent>) {
+    const date = overrides?.date ?? displayedDays.find((day) => day.isToday)?.iso ?? displayedDays[0]?.iso ?? todayIso;
+    const start = normalizeTimeInput(overrides?.start ?? "12:00");
     const newEvent: CalendarEvent = {
       id: `manual-${Date.now()}`,
-      title: "New event",
+      title: overrides?.title ?? "New event",
       date,
-      start: "12:00",
-      end: "12:45",
-      tone: "stone",
+      start,
+      end: normalizeTimeInput(overrides?.end ?? addMinutesToTime(start, 45)),
+      tone: overrides?.tone ?? "green",
       source: "calendar",
-      notes: "",
+      notes: overrides?.notes ?? "",
+      recurrence: overrides?.recurrence ?? "None",
+      reminder: overrides?.reminder ?? "15 minutes before",
     };
 
     setEvents((current) => [...current, newEvent]);
     setSelectedEventId(newEvent.id);
     setDraft(toEventDraft(newEvent));
     setEditing(true);
+  }
+
+  function createFromQuickText() {
+    const parsed = parseCalendarQuickText(quickText, anchorDate);
+    if (!parsed) return;
+    createEvent(parsed);
+    setQuickText("");
   }
 
   function startEditing() {
@@ -1449,13 +1555,14 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
     }
 
     if (selectedEvent.source === "calendar") {
-      setEvents((current) =>
-        current.map((event) =>
-          event.id === selectedEvent.id
-            ? { ...event, ...cleanDraft }
-            : event,
-        ),
-      );
+      setEvents((current) => {
+        const updatedBase = { ...selectedEvent, ...cleanDraft };
+        const withoutOldRepeats = current.filter((event) => !event.id.startsWith(`${selectedEvent.id}-repeat-`));
+        const updatedEvents = withoutOldRepeats.map((event) =>
+          event.id === selectedEvent.id ? updatedBase : event,
+        );
+        return [...updatedEvents, ...buildRecurringCopies(updatedBase, cleanDraft.recurrence)];
+      });
     }
 
     setEventNotes((current) => ({ ...current, [selectedEvent.id]: cleanDraft.notes }));
@@ -1501,14 +1608,96 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
     }
   }
 
+  function addCalendarAnnotation(event: React.MouseEvent<HTMLDivElement>) {
+    if (!drawMode) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("button, input, textarea, select")) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const text = window.prompt("Add calendar annotation");
+    if (!text?.trim()) return;
+    setAnnotations((current) => [
+      ...current,
+      {
+        id: `annotation-${Date.now()}`,
+        view,
+        anchor: currentAnnotationAnchor,
+        text: text.trim(),
+        x: Math.round(((event.clientX - rect.left) / rect.width) * 100),
+        y: Math.round(((event.clientY - rect.top) / rect.height) * 100),
+      },
+    ]);
+  }
+
+  function removeCalendarAnnotation(annotationId: string) {
+    setAnnotations((current) => current.filter((annotation) => annotation.id !== annotationId));
+  }
+
+  function buildRecurringCopies(baseEvent: CalendarEvent, recurrence: CalendarEvent["recurrence"]) {
+    if (!recurrence || recurrence === "None") return [];
+    const intervalDays = recurrence === "Daily" ? 1 : recurrence === "Weekly" ? 7 : 0;
+    const copies: CalendarEvent[] = [];
+    const baseDate = new Date(`${baseEvent.date}T12:00:00`);
+    const count = recurrence === "Monthly" ? 5 : recurrence === "Weekly" ? 8 : 6;
+
+    for (let index = 1; index <= count; index += 1) {
+      const nextDate = new Date(baseDate);
+      if (recurrence === "Monthly") nextDate.setMonth(baseDate.getMonth() + index);
+      else nextDate.setDate(baseDate.getDate() + intervalDays * index);
+      copies.push({
+        ...baseEvent,
+        id: `${baseEvent.id}-repeat-${index}`,
+        date: toISODate(nextDate),
+      });
+    }
+
+    return copies;
+  }
+
+  function gridPointToSlot(clientX: number, clientY: number) {
+    const grid = gridRef.current;
+    if (!grid) return null;
+    const rect = grid.getBoundingClientRect();
+    const x = Math.min(Math.max(clientX - rect.left, 0), rect.width - 1);
+    const y = Math.min(Math.max(clientY - rect.top, 0), rect.height - 1);
+    const dayIndex = Math.min(displayedDays.length - 1, Math.floor((x / rect.width) * displayedDays.length));
+    const totalMinutes = (END_HOUR - START_HOUR) * 60;
+    const rawMinutes = START_HOUR * 60 + (y / rect.height) * totalMinutes;
+    const rounded = Math.round(rawMinutes / 15) * 15;
+    const start = minutesToTime(rounded);
+    return { date: displayedDays[dayIndex]?.iso ?? todayIso, start };
+  }
+
+  function beginSlotCreate(event: MouseEvent<HTMLDivElement>) {
+    if (view === "Month" || view === "Agenda") return;
+    if ((event.target as HTMLElement).closest(".calendar-event-card")) return;
+    const slot = gridPointToSlot(event.clientX, event.clientY);
+    if (!slot) return;
+    setCreatingSlot({ ...slot, end: addMinutesToTime(slot.start, 30) });
+  }
+
+  function updateSlotCreate(event: MouseEvent<HTMLDivElement>) {
+    if (!creatingSlot) return;
+    const slot = gridPointToSlot(event.clientX, event.clientY);
+    if (!slot) return;
+    const startMinutes = timeToMinutes(creatingSlot.start);
+    const endMinutes = Math.max(timeToMinutes(slot.start), startMinutes + 30);
+    setCreatingSlot({ ...creatingSlot, end: minutesToTime(endMinutes) });
+  }
+
+  function finishSlotCreate() {
+    if (!creatingSlot) return;
+    createEvent({ ...creatingSlot, title: "New time block", tone: "green" });
+    setCreatingSlot(null);
+  }
+
   return (
-    <section className={`calendar-space ${contextOpen ? "calendar-context-open" : "calendar-context-closed"}`}>
-      <div className="calendar-board" aria-label="Calendar workspace">
+    <section className={`calendar-space ${contextOpen ? "calendar-context-open" : "calendar-context-closed"} ${densityClass}`}>
+      <div className={drawMode ? "calendar-board calendar-board-drawing" : "calendar-board"} aria-label="Calendar workspace" onDoubleClick={addCalendarAnnotation}>
         <header className="calendar-toolbar">
           <div className="calendar-range-control">
-            <button type="button" aria-label="Previous week" onClick={() => moveWeek(-1)}>‹</button>
+            <button type="button" onClick={() => moveCalendar(-1)} aria-label={`Previous ${view.toLowerCase()}`}>‹</button>
             <strong>{rangeLabel}</strong>
-            <button type="button" aria-label="Next week" onClick={() => moveWeek(1)}>›</button>
+            <button type="button" onClick={() => moveCalendar(1)} aria-label={`Next ${view.toLowerCase()}`}>›</button>
             <button type="button" className="calendar-today-button" onClick={jumpToToday}>Today</button>
           </div>
 
@@ -1525,12 +1714,46 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
             ))}
           </div>
 
-          <button type="button" className="calendar-add-button" onClick={createEvent}>
-            + New Event
-          </button>
+          <div className="calendar-toolbar-actions">
+            <button
+              type="button"
+              className="calendar-tool-chip"
+              title="Cycle calendar density"
+              onClick={() =>
+                setDensity((current) =>
+                  current === "Compact" ? "Comfortable" : current === "Comfortable" ? "Expanded" : "Compact",
+                )
+              }
+            >
+              Density · {density}
+            </button>
+            <button
+              type="button"
+              className="calendar-tool-chip"
+              title="Cycle visible sources"
+              onClick={() =>
+                setFilter((current) =>
+                  current === "All" ? "Calendar" : current === "Calendar" ? "Notes" : current === "Notes" ? "Reminders" : "All",
+                )
+              }
+            >
+              {filter}
+            </button>
+            <button
+              type="button"
+              className={drawMode ? "calendar-tool-chip calendar-tool-chip-active" : "calendar-tool-chip"}
+              title="Draw annotations"
+              onClick={() => setDrawMode((current) => !current)}
+            >
+              Draw
+            </button>
+            <button type="button" className="calendar-add-button" onClick={() => createEvent()}>
+              + New Event
+            </button>
+          </div>
         </header>
 
-        <div className={`calendar-view-stack calendar-motion-${calendarMotion}`} key={`${view}-${weekStart.toISOString()}`}>
+        <div className={`calendar-view-stack calendar-motion-${calendarMotion}`} key={`${view}-${anchorDate.toISOString()}-${density}-${filter}`}>
         {view === "Month" ? (
           <div className="calendar-month-shell">
             {monthDays.map((day) => {
@@ -1541,7 +1764,7 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
                   type="button"
                   className={`calendar-month-cell ${day.inMonth ? "" : "calendar-month-muted"} ${day.isToday ? "calendar-month-today" : ""}`}
                   onClick={() => {
-                    setWeekStart(getMonday(new Date(`${day.iso}T12:00:00`)));
+                    setAnchorDate(new Date(`${day.iso}T12:00:00`));
                     setView("Day");
                   }}
                 >
@@ -1568,7 +1791,15 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
           <div className="calendar-week-header">
             <div className="calendar-time-spacer" />
             {displayedDays.map((day) => (
-              <button key={day.iso} type="button" className={`calendar-day-heading ${day.isToday ? "calendar-day-current" : ""}`}>
+              <button
+                key={day.iso}
+                type="button"
+                className={`calendar-day-heading ${day.isToday ? "calendar-day-current" : ""}`}
+                onClick={() => {
+                  setAnchorDate(new Date(`${day.iso}T12:00:00`));
+                  setView("Day");
+                }}
+              >
                 <span>{day.label}</span>
                 <strong>{day.number}</strong>
               </button>
@@ -1582,7 +1813,16 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
               ))}
             </div>
 
-            <div className="calendar-grid" role="grid" aria-label="Week calendar grid">
+            <div
+              className="calendar-grid"
+              role="grid"
+              aria-label={`${view} calendar grid`}
+              ref={gridRef}
+              onMouseDown={beginSlotCreate}
+              onMouseMove={updateSlotCreate}
+              onMouseUp={finishSlotCreate}
+              onMouseLeave={() => setCreatingSlot(null)}
+            >
               {showNow && <div className="calendar-now-line" style={{ top: `${nowTop}%` }}><span>Now</span></div>}
               {displayedDays.map((day, index) => (
                 <div
@@ -1598,6 +1838,20 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
                   style={{ top: `${(index * 100) / (END_HOUR - START_HOUR)}%` }}
                 />
               ))}
+
+              {creatingSlot && (
+                <div
+                  className="calendar-slot-preview"
+                  style={{
+                    left: `calc(${(displayedDays.findIndex((day) => day.iso === creatingSlot.date) * 100) / displayedDays.length}% + 8px)`,
+                    width: `calc(${100 / displayedDays.length}% - 16px)`,
+                    top: `${minutesToTop(timeToMinutes(creatingSlot.start), START_HOUR, END_HOUR)}%`,
+                    height: `${Math.max(minutesToHeight(timeToMinutes(creatingSlot.end) - timeToMinutes(creatingSlot.start), START_HOUR, END_HOUR), 6)}%`,
+                  }}
+                >
+                  New event · {formatTimeLabel(creatingSlot.start)}
+                </div>
+              )}
 
               {visibleEvents.map((event) => {
                 const dayIndex = displayedDays.findIndex((day) => day.iso === event.date);
@@ -1630,28 +1884,24 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
         </div>
         )}
         </div>
+
+        {visibleAnnotations.map((annotation) => (
+          <button
+            key={annotation.id}
+            type="button"
+            className="calendar-annotation"
+            style={{ left: `${annotation.x}%`, top: `${annotation.y}%` }}
+            title="Click to delete annotation"
+            onClick={() => removeCalendarAnnotation(annotation.id)}
+          >
+            {annotation.text}
+          </button>
+        ))}
       </div>
 
       {contextOpen && selectedEvent && (
         <aside className="calendar-context-panel" aria-label="Selected calendar event details">
           <button type="button" className="calendar-context-close" onClick={closeEventPanel} aria-label="Close event details">›</button>
-
-          <section className="calendar-upcoming-card">
-            <div className="calendar-panel-title-row">
-              <h3>Upcoming</h3>
-            </div>
-            {upcoming.map((event) => (
-              <button
-                key={`upcoming-${event.id}`}
-                type="button"
-                className={selectedEvent.id === event.id ? "upcoming-event active" : "upcoming-event"}
-                onClick={() => selectEvent(event.id)}
-              >
-                <strong>{event.title}</strong>
-                <span>{formatDateShort(event.date)} · {formatTimeLabel(event.start)}</span>
-              </button>
-            ))}
-          </section>
 
           <section className="calendar-detail-card">
             <div className="calendar-detail-heading">
@@ -1661,8 +1911,6 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
               </div>
               <button type="button" aria-label="More event options">•••</button>
             </div>
-
-            <div className="calendar-source-pill">{selectedEvent.source === "note" ? "Linked note" : selectedEvent.source === "reminder" ? "Reminder" : "Calendar event"}</div>
 
             {editing && draft ? (
               <div className="calendar-edit-form">
@@ -1698,12 +1946,32 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
                     <input type="time" value={draft.end} onChange={(event) => updateDraft("end", event.target.value)} />
                   </label>
                 </div>
+                <div className="calendar-edit-row">
+                  <label>
+                    <span>Repeat</span>
+                    <select value={draft.recurrence} onChange={(event) => updateDraft("recurrence", event.target.value as EventDraft["recurrence"])}>
+                      <option>None</option>
+                      <option>Daily</option>
+                      <option>Weekly</option>
+                      <option>Monthly</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Reminder</span>
+                    <select value={draft.reminder} onChange={(event) => updateDraft("reminder", event.target.value as EventDraft["reminder"])}>
+                      <option>None</option>
+                      <option>At time</option>
+                      <option>15 minutes before</option>
+                      <option>1 hour before</option>
+                    </select>
+                  </label>
+                </div>
                 <label>
                   <span>Notes</span>
                   <textarea value={draft.notes} onChange={(event) => updateDraft("notes", event.target.value)} placeholder="Add context, links, or follow-up notes..." />
                 </label>
                 <div className="calendar-edit-actions">
-                  <button type="button" onClick={saveDraft}>Save changes</button>
+                  <button type="button" onClick={saveDraft}>Save</button>
                   <button type="button" onClick={() => setEditing(false)}>Cancel</button>
                 </div>
               </div>
@@ -1723,12 +1991,20 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
                 </div>
 
                 {panelTab === "Notes" ? (
-                  <div className="calendar-notes-preview">
-                    {(eventNotes[selectedEvent.id] ?? selectedEvent.notes)?.trim() || "No extra notes yet. Click Edit to add context."}
-                  </div>
+                  <textarea
+                    className="calendar-notes-preview calendar-notes-editor"
+                    value={(eventNotes[selectedEvent.id] ?? selectedEvent.notes) || ""}
+                    onChange={(event) => updateSelectedNotes(event.target.value)}
+                    placeholder="Add notes, context, or links..."
+                  />
                 ) : (
                   <p className="calendar-detail-note">{panelTab} attachments will sit here once integrations are connected.</p>
                 )}
+
+                <div className="calendar-context-meta">
+                  <span>{selectedEvent.recurrence && selectedEvent.recurrence !== "None" ? `Repeats ${selectedEvent.recurrence.toLowerCase()}` : "Does not repeat"}</span>
+                  <span>{selectedEvent.reminder && selectedEvent.reminder !== "None" ? selectedEvent.reminder : "No reminder"}</span>
+                </div>
 
                 <div className="calendar-detail-actions">
                   <button type="button" onClick={startEditing}>Edit</button>
@@ -1742,6 +2018,15 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
       )}
     </section>
   );
+}
+
+function loadCalendarAnnotations(key: string) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) ?? "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 function getMonday(date: Date) {
@@ -1791,9 +2076,54 @@ function normalizeTimeInput(value: string) {
 
 function addMinutesToTime(value: string, amount: number) {
   const total = Math.min(Math.max(timeToMinutes(value) + amount, 0), 23 * 60 + 59);
+  return minutesToTime(total);
+}
+
+function minutesToTime(totalMinutes: number) {
+  const total = Math.min(Math.max(totalMinutes, 0), 23 * 60 + 59);
   const hours = Math.floor(total / 60);
   const minutes = total % 60;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function parseCalendarQuickText(value: string, baseDate: Date) {
+  const text = value.trim();
+  if (!text) return null;
+
+  const lower = text.toLowerCase();
+  const date = new Date(baseDate);
+  date.setHours(0, 0, 0, 0);
+
+  if (lower.includes("tomorrow")) {
+    date.setDate(date.getDate() + 1);
+  } else {
+    const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const foundDay = weekdays.findIndex((day) => lower.includes(day));
+    if (foundDay >= 0) {
+      const current = date.getDay();
+      const offset = (foundDay - current + 7) % 7 || 7;
+      date.setDate(date.getDate() + offset);
+    }
+  }
+
+  const timeMatch = lower.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/);
+  const start = timeMatch
+    ? normalizeTimeInput(`${timeMatch[1]}:${timeMatch[2] ?? "00"} ${timeMatch[3]}`)
+    : "12:00";
+  const title = text
+    .replace(/today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday/gi, "")
+    .replace(/\d{1,2}(?::\d{2})?\s*(am|pm)/gi, "")
+    .trim() || "New event";
+
+  return {
+    title,
+    date: toISODate(date),
+    start,
+    end: addMinutesToTime(start, 60),
+    tone: "green" as const,
+    source: "calendar" as const,
+    notes: `Created from: ${text}`,
+  };
 }
 
 function minutesToTop(minutes: number, startHour: number, endHour: number) {
@@ -1829,6 +2159,8 @@ function toEventDraft(event: {
   end: string;
   tone: string;
   notes: string;
+  recurrence?: "None" | "Daily" | "Weekly" | "Monthly";
+  reminder?: "None" | "At time" | "15 minutes before" | "1 hour before";
 }) {
   return {
     title: event.title,
@@ -1837,6 +2169,8 @@ function toEventDraft(event: {
     end: normalizeTimeInput(event.end),
     tone: event.tone as "stone" | "slate" | "violet" | "lavender" | "green" | "plum" | "purple" | "amber" | "blue" | "note",
     notes: event.notes,
+    recurrence: event.recurrence ?? "None",
+    reminder: event.reminder ?? "15 minutes before",
   };
 }
 
@@ -1889,6 +2223,497 @@ function buildBaseCalendarEvents(): any[] {
     { id: "dinner", title: "Dinner with Skye", date: dateFor(5), start: "19:00", end: "20:30", tone: "purple", source: "calendar", notes: "Personal event." },
     { id: "gym", title: "Gym", date: dateFor(0), start: "17:00", end: "18:15", tone: "amber", source: "calendar", notes: "Training block." },
   ];
+}
+
+
+type ReminderItem = {
+  id: string;
+  title: string;
+  detail: string;
+  date: string;
+  time: string;
+  list: "Personal" | "Work" | "Study" | "Health" | "Finance" | "Noti";
+  priority: Priority;
+  completed: boolean;
+  linkedThreadId?: number;
+};
+
+const REMINDER_LISTS: ReminderItem["list"][] = ["Personal", "Work", "Study", "Health", "Finance", "Noti"];
+const REMINDER_STORAGE_KEY = "noti-reminders-stable-v1";
+
+function RemindersWorkspace({ threads }: { threads: NoteThread[] }) {
+  type ReminderFilter = "All Reminders" | "Today" | "Tomorrow" | "This Week" | "Overdue" | "Completed";
+  type ReminderViewMode = "List" | "Calendar" | "Focus";
+
+  const [filter, setFilter] = useState<ReminderFilter>("This Week");
+  const [viewMode, setViewMode] = useState<ReminderViewMode>("List");
+  const [quickText, setQuickText] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [reminders, setReminders] = useState<ReminderItem[]>(() => getInitialReminders());
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(REMINDER_STORAGE_KEY, JSON.stringify(reminders));
+    } catch {
+      // Keep the workspace usable if local storage is blocked.
+    }
+  }, [reminders]);
+
+  const today = new Date();
+  const todayIso = toISODate(today);
+  const tomorrowDate = new Date(today);
+  tomorrowDate.setDate(today.getDate() + 1);
+  const tomorrowIso = toISODate(tomorrowDate);
+  const weekEndDate = new Date(today);
+  weekEndDate.setDate(today.getDate() + 6);
+  const weekEndIso = toISODate(weekEndDate);
+
+  const linkedReminders = useMemo<ReminderItem[]>(() => {
+    return threads
+      .filter((thread) => Boolean(thread?.dueDate))
+      .map((thread) => ({
+        id: `thread-${thread.id}`,
+        title: thread.title || "Linked Noti note",
+        detail: thread.messages?.find((message) => message.role === "user")?.text || "Linked from Notes.",
+        date: thread.dueDate || todayIso,
+        time: normalizeTimeInput(thread.dueTime || "09:00"),
+        list: normaliseReminderList(thread.category || "Noti"),
+        priority: thread.priority || "Medium",
+        completed: false,
+        linkedThreadId: thread.id,
+      }));
+  }, [threads, todayIso]);
+
+  const allReminders = useMemo(() => {
+    const existing = new Set(reminders.map((reminder) => reminder.id));
+    return [...reminders, ...linkedReminders.filter((reminder) => !existing.has(reminder.id))].sort(compareReminders);
+  }, [reminders, linkedReminders]);
+
+  const counts = {
+    "All Reminders": allReminders.filter((reminder) => !reminder.completed).length,
+    Today: allReminders.filter((reminder) => !reminder.completed && reminder.date === todayIso).length,
+    Tomorrow: allReminders.filter((reminder) => !reminder.completed && reminder.date === tomorrowIso).length,
+    "This Week": allReminders.filter((reminder) => !reminder.completed && reminder.date >= todayIso && reminder.date <= weekEndIso).length,
+    Overdue: allReminders.filter((reminder) => !reminder.completed && reminder.date < todayIso).length,
+    Completed: allReminders.filter((reminder) => reminder.completed).length,
+  } satisfies Record<ReminderFilter, number>;
+
+  const listCounts = REMINDER_LISTS.reduce((acc, list) => {
+    acc[list] = allReminders.filter((reminder) => !reminder.completed && reminder.list === list).length;
+    return acc;
+  }, {} as Record<ReminderItem["list"], number>);
+
+  const visibleReminders = allReminders.filter((reminder) => {
+    if (filter === "Completed") return reminder.completed;
+    if (reminder.completed) return false;
+    if (filter === "Today") return reminder.date === todayIso;
+    if (filter === "Tomorrow") return reminder.date === tomorrowIso;
+    if (filter === "This Week") return reminder.date >= todayIso && reminder.date <= weekEndIso;
+    if (filter === "Overdue") return reminder.date < todayIso;
+    return true;
+  });
+
+  const selected = allReminders.find((reminder) => reminder.id === selectedId) ?? null;
+  const grouped = groupReminders(visibleReminders, todayIso, tomorrowIso);
+  const weekDays = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() + index);
+    return date;
+  });
+
+  function addReminder(text = quickText) {
+    const parsed = parseReminderText(text);
+    if (!parsed.title.trim()) return;
+
+    const reminder: ReminderItem = {
+      id: `reminder-${Date.now()}`,
+      title: parsed.title,
+      detail: parsed.detail,
+      date: parsed.date,
+      time: parsed.time,
+      list: parsed.list,
+      priority: parsed.priority,
+      completed: false,
+    };
+
+    setReminders((current) => [reminder, ...current]);
+    setSelectedId(reminder.id);
+    setQuickText("");
+    setFilter("All Reminders");
+  }
+
+  function updateReminder(id: string, patch: Partial<ReminderItem>) {
+    if (id.startsWith("thread-")) return;
+    setReminders((current) => current.map((reminder) => reminder.id === id ? { ...reminder, ...patch } : reminder));
+  }
+
+  function toggleReminder(id: string) {
+    if (id.startsWith("thread-")) return;
+    setReminders((current) => current.map((reminder) => reminder.id === id ? { ...reminder, completed: !reminder.completed } : reminder));
+  }
+
+  function deleteReminder(id: string) {
+    if (id.startsWith("thread-")) return;
+    setReminders((current) => current.filter((reminder) => reminder.id !== id));
+    setSelectedId(null);
+  }
+
+  const filterItems: Array<{ label: ReminderFilter; icon: string }> = [
+    { label: "All Reminders", icon: "◌" },
+    { label: "Today", icon: "◷" },
+    { label: "Tomorrow", icon: "◴" },
+    { label: "This Week", icon: "▦" },
+    { label: "Overdue", icon: "△" },
+  ];
+
+  return (
+    <section className="reminders-workspace" aria-label="Reminders workspace">
+      <div className="reminders-shell reminders-shell-v2">
+        <aside className="reminders-filter-panel reminders-filter-panel-v2">
+          <div className="reminders-panel-header reminders-filter-header">
+            <div>
+              <strong>Filters</strong>
+              <small>Smart lists</small>
+            </div>
+            <button type="button" className="reminders-subtle-button" aria-label="Close filters">×</button>
+          </div>
+
+          <nav className="reminder-smart-list reminder-smart-list-v2" aria-label="Reminder filters">
+            {filterItems.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                className={filter === item.label ? "reminder-smart-active" : ""}
+                onClick={() => setFilter(item.label)}
+              >
+                <span>{item.icon}</span>
+                <strong>{item.label}</strong>
+                <small>{counts[item.label]}</small>
+              </button>
+            ))}
+          </nav>
+
+          <div className="reminder-list-summary reminder-list-summary-v2">
+            <p>Lists</p>
+            {REMINDER_LISTS.filter((list) => list !== "Noti").map((list) => (
+              <button key={list} type="button" onClick={() => setFilter("All Reminders")}>
+                <span className={`reminder-list-dot reminder-list-${list.toLowerCase()}`} />
+                <strong>{list}</strong>
+                <small>{listCounts[list]}</small>
+              </button>
+            ))}
+            <button type="button" className="reminders-new-list-button">
+              <span>+</span>
+              <strong>New List</strong>
+              <small />
+            </button>
+          </div>
+        </aside>
+
+        <main className="reminders-main-panel reminders-main-panel-v2">
+          <div className="reminders-main-header reminders-main-header-v2">
+            <div>
+              <p className="reminders-kicker">Reminders</p>
+              <h2>{filter}</h2>
+            </div>
+            <div className="reminders-header-actions reminders-header-actions-v2">
+              <label className="reminders-view-select">
+                <span>View</span>
+                <select value={viewMode} onChange={(event) => setViewMode(event.target.value as ReminderViewMode)}>
+                  <option>List</option>
+                  <option>Calendar</option>
+                  <option>Focus</option>
+                </select>
+              </label>
+              <button type="button" onClick={() => setFilter("Today")}>Today</button>
+              <button type="button" onClick={() => addReminder("New reminder tomorrow at 9am")}>+ New Reminder</button>
+            </div>
+          </div>
+
+          <div className="reminders-quick-bar">
+            <input
+              value={quickText}
+              onChange={(event) => setQuickText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") addReminder();
+              }}
+              placeholder="Remind me to review this tomorrow at 9am"
+            />
+            <button type="button" onClick={() => addReminder()}>Add</button>
+          </div>
+
+          {viewMode === "Calendar" ? (
+            <div className="reminders-calendar-view" aria-label="Reminder calendar view">
+              {weekDays.map((date) => {
+                const iso = toISODate(date);
+                const dayItems = visibleReminders.filter((reminder) => reminder.date === iso);
+                return (
+                  <section key={iso} className="reminders-calendar-day">
+                    <header>
+                      <span>{date.toLocaleDateString(undefined, { weekday: "short" })}</span>
+                      <strong>{date.getDate()}</strong>
+                    </header>
+                    <div>
+                      {dayItems.length === 0 ? <em>No reminders</em> : dayItems.map((reminder) => (
+                        <button key={reminder.id} type="button" onClick={() => setSelectedId(reminder.id)} className={`reminder-calendar-pill reminder-list-${reminder.list.toLowerCase()}`}>
+                          <strong>{reminder.title}</strong>
+                          <small>{formatTimeLabel(reminder.time)}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          ) : viewMode === "Focus" ? (
+            <div className="reminders-focus-view">
+              {(visibleReminders[0] || selected) ? (
+                <article className="reminders-focus-card">
+                  <span className={`reminder-list-dot reminder-list-${(selected ?? visibleReminders[0]).list.toLowerCase()}`} />
+                  <h3>{(selected ?? visibleReminders[0]).title}</h3>
+                  <p>{(selected ?? visibleReminders[0]).detail}</p>
+                  <small>{formatDateLong((selected ?? visibleReminders[0]).date)} · {formatTimeLabel((selected ?? visibleReminders[0]).time)}</small>
+                  <button type="button" onClick={() => toggleReminder((selected ?? visibleReminders[0]).id)}>Mark complete</button>
+                </article>
+              ) : (
+                <div className="reminders-empty-state"><strong>Nothing to focus on.</strong><p>Create a reminder to begin.</p></div>
+              )}
+            </div>
+          ) : (
+            <div className="reminders-stream reminders-stream-v2">
+              {grouped.map((group) => (
+                <section key={group.label} className="reminder-group reminder-group-v2">
+                  <h3>{group.label}</h3>
+                  <div className="reminder-group-stack">
+                    {group.items.map((reminder) => (
+                      <article
+                        key={reminder.id}
+                        className={`reminder-card reminder-card-v2 ${selected?.id === reminder.id ? "reminder-card-active" : ""} ${reminder.completed ? "reminder-card-complete" : ""}`}
+                        onClick={() => setSelectedId(reminder.id)}
+                      >
+                        <button
+                          type="button"
+                          className="reminder-check"
+                          aria-label={`Toggle ${reminder.title}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleReminder(reminder.id);
+                          }}
+                        >
+                          {reminder.completed ? "✓" : ""}
+                        </button>
+                        <div className="reminder-card-copy">
+                          <strong>{reminder.title}</strong>
+                          <small>{reminder.detail}</small>
+                        </div>
+                        <span className={`reminder-priority reminder-priority-${reminder.priority.toLowerCase()}`}>{reminder.list}</span>
+                        <button
+                          type="button"
+                          className="reminder-more-button"
+                          aria-label={`Open ${reminder.title} details`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedId(reminder.id);
+                          }}
+                        >
+                          •••
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ))}
+
+              {grouped.length === 0 && (
+                <div className="reminders-empty-state">
+                  <strong>Nothing here.</strong>
+                  <p>Your reminders will appear when they match this view.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+
+        <aside className={`reminder-detail-panel reminder-detail-panel-v2 ${selected ? "reminder-detail-panel-open" : ""}`}>
+          {selected ? (
+            <>
+              <div className="reminder-detail-header">
+                <div>
+                  <small>{selected.linkedThreadId ? "Linked from Notes" : "Reminder details"}</small>
+                  <strong>{selected.title}</strong>
+                </div>
+                <button type="button" onClick={() => setSelectedId(null)} aria-label="Close reminder details">×</button>
+              </div>
+
+              <textarea
+                className="reminder-detail-textarea"
+                value={selected.detail}
+                readOnly={Boolean(selected.linkedThreadId)}
+                onChange={(event) => updateReminder(selected.id, { detail: event.target.value })}
+                placeholder="Add details, links, or context..."
+              />
+
+              <div className="reminder-detail-grid">
+                <label>Date<input type="date" value={selected.date} disabled={Boolean(selected.linkedThreadId)} onChange={(event) => updateReminder(selected.id, { date: event.target.value })} /></label>
+                <label>Time<input type="time" value={selected.time} disabled={Boolean(selected.linkedThreadId)} onChange={(event) => updateReminder(selected.id, { time: event.target.value })} /></label>
+                <label>Priority<select value={selected.priority} disabled={Boolean(selected.linkedThreadId)} onChange={(event) => updateReminder(selected.id, { priority: event.target.value as Priority })}>{PRIORITIES.map((priority) => <option key={priority}>{priority}</option>)}</select></label>
+                <label>List<select value={selected.list} disabled={Boolean(selected.linkedThreadId)} onChange={(event) => updateReminder(selected.id, { list: event.target.value as ReminderItem["list"] })}>{REMINDER_LISTS.map((list) => <option key={list}>{list}</option>)}</select></label>
+              </div>
+
+              <div className="reminder-context-card">
+                <strong>Linked context</strong>
+                <p>{selected.linkedThreadId ? "This came from a scheduled Noti note." : "Calendar events, notes, files, and links will attach here next."}</p>
+              </div>
+
+              <div className="reminder-detail-actions">
+                <button type="button" onClick={() => toggleReminder(selected.id)} disabled={Boolean(selected.linkedThreadId)}>{selected.completed ? "Mark active" : "Mark complete"}</button>
+                <button type="button" className="reminder-danger" onClick={() => deleteReminder(selected.id)} disabled={Boolean(selected.linkedThreadId)}>Delete</button>
+              </div>
+            </>
+          ) : (
+            <div className="reminder-detail-empty">
+              <strong>Select a reminder</strong>
+              <p>Details slide in here when needed.</p>
+            </div>
+          )}
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function getInitialReminders(): ReminderItem[] {
+  try {
+    const saved = localStorage.getItem(REMINDER_STORAGE_KEY);
+    const parsed = saved ? JSON.parse(saved) : null;
+    if (Array.isArray(parsed)) return parsed.filter(isReminderItem);
+  } catch {
+    // Use defaults below.
+  }
+
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+  const later = new Date();
+  later.setDate(today.getDate() + 5);
+
+  return [
+    {
+      id: "review-deployment",
+      title: "Review deployment plan",
+      detail: "Go through the checklist and update any blockers.",
+      date: toISODate(today),
+      time: "10:00",
+      list: "Work",
+      priority: "High",
+      completed: false,
+    },
+    {
+      id: "project-standup",
+      title: "Project standup",
+      detail: "Bring current decisions and next actions.",
+      date: toISODate(tomorrow),
+      time: "09:30",
+      list: "Work",
+      priority: "Medium",
+      completed: false,
+    },
+    {
+      id: "study-exam",
+      title: "Study for exam",
+      detail: "Review notes and practice questions.",
+      date: toISODate(later),
+      time: "14:00",
+      list: "Study",
+      priority: "Medium",
+      completed: false,
+    },
+  ];
+}
+
+function isReminderItem(value: unknown): value is ReminderItem {
+  const item = value as ReminderItem;
+  return Boolean(item && typeof item.id === "string" && typeof item.title === "string" && typeof item.date === "string");
+}
+
+function compareReminders(a: ReminderItem, b: ReminderItem) {
+  const dateCompare = a.date.localeCompare(b.date);
+  if (dateCompare !== 0) return dateCompare;
+  return timeToMinutes(a.time) - timeToMinutes(b.time);
+}
+
+function normaliseReminderList(category: string): ReminderItem["list"] {
+  const normalized = category.toLowerCase();
+  if (normalized.includes("work") || normalized.includes("project")) return "Work";
+  if (normalized.includes("study")) return "Study";
+  if (normalized.includes("health")) return "Health";
+  if (normalized.includes("finance")) return "Finance";
+  if (normalized.includes("personal")) return "Personal";
+  return "Noti";
+}
+
+function parseReminderText(text: string) {
+  const source = text.trim();
+  const now = new Date();
+  const dueDate = new Date(now);
+  const lower = source.toLowerCase();
+
+  if (lower.includes("tomorrow")) dueDate.setDate(now.getDate() + 1);
+  if (lower.includes("next week") || lower.includes("this week")) dueDate.setDate(now.getDate() + 5);
+
+  const timeMatch = lower.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/);
+  const time = timeMatch ? normalizeTimeInput(timeMatch[0]) : "09:00";
+  const priority: Priority = lower.includes("urgent") ? "Urgent" : lower.includes("high") ? "High" : lower.includes("low") ? "Low" : "Medium";
+  const list: ReminderItem["list"] = lower.includes("study") ? "Study" : lower.includes("gym") || lower.includes("health") ? "Health" : lower.includes("pay") || lower.includes("bill") ? "Finance" : lower.includes("work") || lower.includes("deploy") ? "Work" : "Personal";
+  const cleaned = source
+    .replace(/remind me to/i, "")
+    .replace(/tomorrow|next week|this week|high priority|urgent|low priority/gi, "")
+    .replace(/\d{1,2}(?::\d{2})?\s*(am|pm)/gi, "")
+    .trim();
+
+  const title = cleaned || "New reminder";
+
+  return {
+    title: title.charAt(0).toUpperCase() + title.slice(1),
+    detail: source,
+    date: toISODate(dueDate),
+    time,
+    priority,
+    list,
+  };
+}
+
+function groupReminders(items: ReminderItem[], todayIso: string, tomorrowIso: string) {
+  const groups = new Map<string, ReminderItem[]>();
+  for (const item of items) {
+    const label = item.completed
+      ? "Completed"
+      : item.date === todayIso
+        ? "Today"
+        : item.date === tomorrowIso
+          ? "Tomorrow"
+          : item.date > tomorrowIso
+            ? "Upcoming"
+            : "Earlier";
+    groups.set(label, [...(groups.get(label) ?? []), item]);
+  }
+
+  return ["Today", "Tomorrow", "Upcoming", "Earlier", "Completed"]
+    .filter((label) => groups.has(label))
+    .map((label) => ({ label, items: groups.get(label) ?? [] }));
+}
+
+function getReminderFilterIcon(item: string) {
+  switch (item) {
+    case "Today":
+      return "☼";
+    case "Completed":
+      return "✓";
+    case "All":
+      return "◎";
+    default:
+      return "◌";
+  }
 }
 
 
@@ -1986,12 +2811,40 @@ function CodeSpaceWorkspace({
     "Calendar animation update",
     "Sidebar layout experiment",
   ]);
+  const codeEditorRef = useRef<HTMLTextAreaElement | null>(null);
   const [output, setOutput] = useState<string[]>([]);
-  const [activity, setActivity] = useState([
-    "Updated calendar animations.ts · 12m ago",
-    "Created snippet useSpatialDragging · 1h ago",
-    "Snapshot created before glass refactor · Yesterday",
+  const [activity, setActivity] = useState<string[]>([]);
+  const [explorerOpen, setExplorerOpen] = useState(true);
+  const [bottomPanelOpen, setBottomPanelOpen] = useState(false);
+  const [bottomPanelTab, setBottomPanelTab] = useState<"Terminal" | "Problems" | "Output" | "Git">("Terminal");
+  const [quickOpenOpen, setQuickOpenOpen] = useState(false);
+  const [quickOpenQuery, setQuickOpenQuery] = useState("");
+  const [openFiles, setOpenFiles] = useState<string[]>(["Calendar.tsx"]);
+  const [editorStats, setEditorStats] = useState({ line: 1, column: 1 });
+  const [terminalHistory, setTerminalHistory] = useState<string[]>(["$ git status", "On branch main", "nothing to commit, working tree clean"]);
+  const [terminalCommand, setTerminalCommand] = useState("");
+  const fileUploadRef = useRef<HTMLInputElement | null>(null);
+  const folderUploadRef = useRef<HTMLInputElement | null>(null);
+  const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
+  const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [rightPanelTab, setRightPanelTab] = useState<"Run" | "Notes" | "Linked">("Run");
+  const [customFiles, setCustomFiles] = useState<Record<string, string>>({});
+  const [customFolders, setCustomFolders] = useState<string[]>([]);
+  const [workspaceNote, setWorkspaceNote] = useState("Working on the new spatial calendar layout.\n\nFocus on interaction polish and animation smoothness.");
+  const [commitMessage, setCommitMessage] = useState("");
+  const [sessions, setSessions] = useState<DevSession[]>([
+    {
+      id: "noti-calendar",
+      title: "Noti Spatial Calendar",
+      repo: "noti-app",
+      branch: "main",
+      updated: "Updated 12m ago",
+      status: "Active",
+    },
   ]);
+  const [activeSessionId, setActiveSessionId] = useState("noti-calendar");
+  const [sessionMenuOpen, setSessionMenuOpen] = useState(false);
+  const [codeHomeView, setCodeHomeView] = useState<"home" | "sessions" | "activity">("home");
   const [code, setCode] = useState(`import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 
@@ -2015,40 +2868,84 @@ export function CalendarGrid() {
 }
 `);
 
-  const sessions: DevSession[] = [
-    {
-      id: "noti-calendar",
-      title: "Noti Spatial Calendar",
-      repo: "noti-app",
-      branch: "main",
-      updated: "Updated 12m ago",
-      status: "Active",
-    },
-    {
-      id: "calendar-refactor",
-      title: "Calendar Refactor",
-      repo: "noti-app",
-      branch: "main",
-      updated: "Updated 2h ago",
-      status: "Draft",
-    },
-    {
-      id: "sidebar-polish",
-      title: "Glass Sidebar Polish",
-      repo: "noti-app",
-      branch: "main",
-      updated: "Yesterday",
-      status: "Review",
-    },
-    {
-      id: "animation-cleanup",
-      title: "Animation Cleanup",
-      repo: "noti-app",
-      branch: "main",
-      updated: "2 days ago",
-      status: "Saved",
-    },
+  const defaultFileList = [
+    "App.tsx",
+    "App.css",
+    "main.tsx",
+    "Calendar.tsx",
+    "useCalendar.ts",
+    "calendar.types.ts",
+    "storage.ts",
+    "package.json",
+    "README.md",
+    "tsconfig.json",
   ];
+
+  const sampleFileContents: Record<string, string> = {
+    "Calendar.tsx": code,
+    "useCalendar.ts": `import { useMemo, useState } from 'react'
+
+export function useCalendar() {
+  const [view, setView] = useState('week')
+
+  const visibleRange = useMemo(() => {
+    return { start: new Date(), end: new Date() }
+  }, [])
+
+  return { view, setView, visibleRange }
+}
+`,
+    "calendar.types.ts": `export type CalendarView = 'day' | 'week' | 'month' | 'agenda'
+
+export type CalendarEvent = {
+  id: string
+  title: string
+  startsAt: string
+  endsAt: string
+  notes?: string
+}
+`,
+    "App.tsx": `export default function App() {
+  return <main className="noti-shell">Noti</main>
+}
+`,
+    "App.css": `.noti-shell {
+  min-height: 100vh;
+  background: rgba(10, 10, 10, 0.92);
+}
+`,
+    "main.tsx": `import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(<App />)
+`,
+    "storage.ts": `export function saveLocal<T>(key: string, value: T) {
+  localStorage.setItem(key, JSON.stringify(value))
+}
+`,
+    "package.json": `{
+  "scripts": {
+    "dev": "vite",
+    "tauri": "tauri"
+  }
+}
+`,
+    "README.md": `# Noti Code
+
+A calm engineering workspace built into Noti.
+`,
+    "tsconfig.json": `{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "strict": true
+  }
+}
+`,
+  };
+
+  const fileList = Array.from(new Set([...defaultFileList, ...Object.keys(customFiles)]));
+  const fileContentMap: Record<string, string> = { ...sampleFileContents, ...customFiles, [activeSnippet]: code };
 
   const snippetCards = [
     { title: "useSpatialDragging", tag: "React Hook", updated: "Updated 1h ago" },
@@ -2076,19 +2973,217 @@ export function CalendarGrid() {
     return () => document.body.classList.remove("noti-code-session-active");
   }, [mode]);
 
-  function openSession() {
+  useEffect(() => {
+    const folderInput = folderUploadRef.current as (HTMLInputElement & { webkitdirectory?: boolean; directory?: boolean }) | null;
+    if (folderInput) {
+      folderInput.webkitdirectory = true;
+      folderInput.directory = true;
+    }
+  }, []);
+
+  async function closeCompilerWindow() {
+    await getCurrentWindow().close();
+  }
+
+  async function minimiseCompilerWindow() {
+    await getCurrentWindow().minimize();
+  }
+
+  async function toggleCompilerFullscreen() {
+    const currentWindow = getCurrentWindow();
+    const fullscreen = await currentWindow.isFullscreen();
+    await currentWindow.setFullscreen(!fullscreen);
+  }
+
+  function updateEditorStats(target?: HTMLTextAreaElement | null) {
+    const editor = target ?? codeEditorRef.current;
+    if (!editor) return;
+    const beforeCursor = editor.value.slice(0, editor.selectionStart ?? 0);
+    const lines = beforeCursor.split("\n");
+    setEditorStats({ line: lines.length, column: (lines.at(-1)?.length ?? 0) + 1 });
+  }
+
+  function openFile(file: string) {
+    setActiveSnippet(file);
+    setOpenFiles((current) => current.includes(file) ? current : [...current, file]);
+    setCode(fileContentMap[file] ?? `// ${file}\n\n`);
+    setQuickOpenOpen(false);
+    requestAnimationFrame(() => codeEditorRef.current?.focus());
+  }
+
+  function closeFile(file: string) {
+    setOpenFiles((current) => {
+      const next = current.filter((item) => item !== file);
+      if (file === activeSnippet) {
+        const fallback = next.at(-1) ?? "Calendar.tsx";
+        setActiveSnippet(fallback);
+        setCode(fileContentMap[fallback] ?? "");
+      }
+      return next.length ? next : ["Calendar.tsx"];
+    });
+  }
+
+  function insertAtSelection(value: string) {
+    const editor = codeEditorRef.current;
+    if (!editor) return;
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const next = code.slice(0, start) + value + code.slice(end);
+    setCode(next);
+    requestAnimationFrame(() => {
+      editor.selectionStart = editor.selectionEnd = start + value.length;
+      updateEditorStats(editor);
+    });
+  }
+
+  function outdentSelection() {
+    const editor = codeEditorRef.current;
+    if (!editor) return;
+    const start = editor.selectionStart;
+    const before = code.slice(0, start);
+    const lineStart = before.lastIndexOf("\n") + 1;
+    const line = code.slice(lineStart);
+    const removeCount = line.startsWith("  ") ? 2 : line.startsWith("\t") ? 1 : 0;
+    if (!removeCount) return;
+    const next = code.slice(0, lineStart) + code.slice(lineStart + removeCount);
+    setCode(next);
+    requestAnimationFrame(() => {
+      editor.selectionStart = editor.selectionEnd = Math.max(lineStart, start - removeCount);
+      updateEditorStats(editor);
+    });
+  }
+
+  function toggleCommentLine() {
+    const editor = codeEditorRef.current;
+    if (!editor) return;
+    const start = editor.selectionStart;
+    const before = code.slice(0, start);
+    const lineStart = before.lastIndexOf("\n") + 1;
+    const lineEndIndex = code.indexOf("\n", start);
+    const lineEnd = lineEndIndex === -1 ? code.length : lineEndIndex;
+    const line = code.slice(lineStart, lineEnd);
+    const trimmed = line.trimStart();
+    const leading = line.length - trimmed.length;
+    const prefixIndex = lineStart + leading;
+    const next = trimmed.startsWith("//")
+      ? code.slice(0, prefixIndex) + code.slice(prefixIndex + 2)
+      : code.slice(0, prefixIndex) + "// " + code.slice(prefixIndex);
+    setCode(next);
+    requestAnimationFrame(() => updateEditorStats(editor));
+  }
+
+  function handleCodeEditorKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    const command = event.metaKey || event.ctrlKey;
+
+    if (event.key === "Tab") {
+      event.preventDefault();
+      event.shiftKey ? outdentSelection() : insertAtSelection("  ");
+      return;
+    }
+
+    if (command && event.key.toLowerCase() === "s") {
+      event.preventDefault();
+      saveSnapshot();
+      return;
+    }
+
+    if (command && event.key === "Enter") {
+      event.preventDefault();
+      runCode();
+      return;
+    }
+
+    if (command && event.key.toLowerCase() === "b") {
+      event.preventDefault();
+      setExplorerOpen((current) => !current);
+      return;
+    }
+
+    if (command && event.key.toLowerCase() === "j") {
+      event.preventDefault();
+      setBottomPanelOpen((current) => !current);
+      return;
+    }
+
+    if (command && event.key.toLowerCase() === "p") {
+      event.preventDefault();
+      setQuickOpenOpen(true);
+      return;
+    }
+
+    if (command && event.key.toLowerCase() === "w") {
+      event.preventDefault();
+      closeFile(activeSnippet);
+      return;
+    }
+
+    if (command && event.key === "/") {
+      event.preventDefault();
+      toggleCommentLine();
+    }
+  }
+
+  function runTerminalCommand() {
+    const command = terminalCommand.trim();
+    if (!command) return;
+    const response = command === "git status"
+      ? ["On branch main", "Your branch is up to date with 'origin/main'.", "nothing to commit, working tree clean"]
+      : command.startsWith("npm")
+        ? ["Simulated command queued. Real Tauri shell integration comes later."]
+        : ["Command recorded locally."];
+    setTerminalHistory((current) => [...current, `$ ${command}`, ...response]);
+    setTerminalCommand("");
+  }
+
+  function openSession(sessionId = activeSessionId) {
+    const target = sessions.find((session) => session.id === sessionId) ?? sessions[0];
+    if (target) {
+      setActiveSessionId(target.id);
+    }
+    setSessionMenuOpen(false);
     setMode("session");
     setOutputOpen(false);
+  }
+
+  function createSession() {
+    const nextSession: DevSession = {
+      id: `session-${Date.now()}`,
+      title: "Untitled Session",
+      repo: "noti-app",
+      branch: "main",
+      updated: "Just now",
+      status: "Draft",
+    };
+    setSessions((current) => [nextSession, ...current]);
+    setActiveSessionId(nextSession.id);
+    setMode("session");
+    setOutputOpen(false);
+  }
+
+  function deleteSession(sessionId: string) {
+    setSessions((current) => current.filter((session) => session.id !== sessionId));
+    setSessionMenuOpen(false);
+    if (activeSessionId === sessionId) {
+      const fallback = sessions.find((session) => session.id !== sessionId);
+      if (fallback) {
+        setActiveSessionId(fallback.id);
+      } else {
+        setActiveSessionId("");
+      }
+    }
   }
 
   function runCode() {
     setRunning(true);
     setOutputOpen(true);
+    setRightPanelOpen(true);
+    setRightPanelTab("Run");
+    setBottomPanelOpen(true);
+    setBottomPanelTab("Output");
     setOutput(["Running local session checks…"]);
     window.setTimeout(() => {
       setRunning(false);
       setOutput(["✓ Compiled successfully", "✓ No errors found", "Completed in 362ms"]);
-      setActivity((current) => ["Ran Calendar.tsx successfully · Just now", ...current].slice(0, 4));
     }, 700);
   }
 
@@ -2103,112 +3198,227 @@ export function CalendarGrid() {
     setSnapshots((current) => [label, ...current].slice(0, 6));
     setOutputOpen(true);
     setOutput([`✓ Saved ${label}`]);
-    setActivity((current) => [`Snapshot saved for ${activeSnippet} · Just now`, ...current].slice(0, 4));
   }
 
   function newSnippet() {
     const label = `snippet-${Date.now().toString().slice(-4)}.tsx`;
+    const content = "export function NewSnippet() {\n  return null\n}\n";
+    setCustomFiles((current) => ({ ...current, [label]: content }));
     setActiveSnippet(label);
     setLanguage("TSX");
-    setCode("export function NewSnippet() {\n  return null\n}\n");
+    setCode(content);
+    setOpenFiles((current) => current.includes(label) ? current : [...current, label]);
     setMode("session");
     setOutputOpen(false);
   }
 
+  function newFile() {
+    const label = `untitled-${Date.now().toString().slice(-4)}.tsx`;
+    const content = "// New file\n\n";
+    setCustomFiles((current) => ({ ...current, [label]: content }));
+    openFile(label);
+  }
+
+  function newFolder() {
+    const label = `folder-${customFolders.length + 1}`;
+    setCustomFolders((current) => [...current, label]);
+    setTerminalHistory((current) => [...current, `$ mkdir ${label}`, `Created ${label} locally`]);
+  }
+
+  async function uploadFiles(files: FileList | null) {
+    if (!files?.length) return;
+
+    const readableExtensions = new Set([
+      "ts", "tsx", "js", "jsx", "css", "html", "json", "md", "txt", "yml", "yaml", "xml", "svg", "rs", "go", "py", "cs", "java", "rb", "php", "sql", "env", "gitignore"
+    ]);
+
+    const entries = await Promise.all(Array.from(files).map((file) => new Promise<[string, string]>((resolve) => {
+      const relativeName = ((file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name).replace(/^\/+/, "");
+      const extension = relativeName.split(".").pop()?.toLowerCase() ?? "";
+      const looksReadable = file.type.startsWith("text/") || readableExtensions.has(extension) || !file.type;
+
+      if (!looksReadable || file.size > 2_000_000) {
+        resolve([relativeName, `// ${relativeName} imported as a reference.\n// Binary or large file preview is not supported yet.\n`]);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => resolve([relativeName, String(reader.result ?? "")]);
+      reader.onerror = () => resolve([relativeName, `// Could not read ${relativeName}`]);
+      reader.readAsText(file);
+    })));
+
+    setUploadMenuOpen(false);
+    setCustomFiles((current) => ({ ...current, ...Object.fromEntries(entries) }));
+    setOpenFiles((current) => Array.from(new Set([...current, ...entries.map(([name]) => name)])));
+    const [firstName, firstContent] = entries[0];
+    setActiveSnippet(firstName);
+    setCode(firstContent);
+    setOutputOpen(true);
+    setRightPanelOpen(true);
+    setRightPanelTab("Run");
+    setOutput([`✓ Imported ${entries.length} file${entries.length > 1 ? "s" : ""}`, `Opened ${firstName}`]);
+  }
+
+  function deleteActiveFile() {
+    const file = activeSnippet;
+    const isDefaultFile = defaultFileList.includes(file);
+    if (!window.confirm(`Remove ${file} from the current Noti Code session?`)) return;
+
+    setCustomFiles((current) => {
+      const next = { ...current };
+      delete next[file];
+      return next;
+    });
+    closeFile(file);
+    setOutputOpen(true);
+    setRightPanelOpen(true);
+    setRightPanelTab("Run");
+    setOutput([isDefaultFile ? `${file} removed from open editors. Base files remain available in Explorer.` : `Deleted ${file} from local workspace`]);
+  }
+
+  function commitChanges() {
+    const message = commitMessage.trim() || "Update Noti Code workspace";
+    setTerminalHistory((current) => [...current, `$ git commit -m "${message}"`, "[main abc1234] " + message]);
+    setCommitMessage("");
+  }
+
+  const activeSession = sessions.find((session) => session.id === activeSessionId) ?? sessions[0];
+
   if (mode === "home") {
     return (
-      <section className="dev-home-space">
+      <section className="dev-home-space noti-code-compact-home">
         <div className="dev-home-topbar">
           <div>
             <span className="dev-eyebrow">Noti Code</span>
             <h1>Build, experiment, and ship.</h1>
-            <p>Your technical workspace for sessions, snippets, snapshots, and GitHub context.</p>
+            <p>Your focused coding environment for sessions, snippets, snapshots, and GitHub context.</p>
           </div>
           <div className="dev-home-actions">
             <label className="dev-search-field">
               <span>⌕</span>
               <input placeholder="Search sessions, snippets…" />
             </label>
-            <button type="button" className="dev-icon-button">⌘K</button>
-            <button type="button" className="dev-icon-button">◌</button>
-            <button type="button" className="dev-primary-button" onClick={openSession}>+ New Session</button>
+            <button type="button" className="dev-primary-button" onClick={createSession}>+ New Session</button>
           </div>
         </div>
 
-        <div className="dev-home-grid">
-          <article className="dev-card dev-continue-card">
-            <div className="dev-card-heading">
-              <strong>Continue working</strong>
-            </div>
-            <div className="dev-current-session">
-              <div className="dev-session-title-row">
-                <h2>Noti Spatial Calendar</h2>
-                <span>Active</span>
-              </div>
-              <p>Updated 12m ago</p>
-              <div className="dev-repo-row">
-                <span>GitHub</span>
-                <span>noti-app</span>
-                <span>main</span>
-              </div>
-              <div className="dev-session-actions">
-                <button type="button" className="dev-primary-button" onClick={openSession}>Continue Session</button>
-                <button type="button" className="dev-more-button">•••</button>
-              </div>
-            </div>
-          </article>
-
-          <article className="dev-card dev-activity-card">
-            <div className="dev-card-heading">
-              <strong>Recent Activity</strong>
-            </div>
-            <div className="dev-activity-list">
-              {activity.map((item) => (
-                <button key={item} type="button">
-                  <span>◫</span>
-                  <strong>{item.split(" · ")[0]}</strong>
-                  <small>{item.split(" · ")[1] ?? "Recently"}</small>
-                </button>
-              ))}
-            </div>
-          </article>
+        <div className="dev-home-view-switcher" aria-label="Noti Code home sections">
+          <button type="button" className={codeHomeView === "home" ? "active" : ""} onClick={() => setCodeHomeView("home")}>Home</button>
+          <button type="button" className={codeHomeView === "sessions" ? "active" : ""} onClick={() => setCodeHomeView("sessions")}>Sessions</button>
+          <button type="button" className={codeHomeView === "activity" ? "active" : ""} onClick={() => setCodeHomeView("activity")}>Activity</button>
         </div>
 
-        <section className="dev-section-block">
-          <div className="dev-section-header">
-            <strong>Recent Sessions</strong>
-            <button type="button" onClick={openSession}>View all sessions →</button>
-          </div>
-          <div className="dev-session-card-row">
-            {sessions.slice(1).map((session) => (
-              <button key={session.id} type="button" className="dev-small-session" onClick={openSession}>
-                <strong>{session.title}</strong>
-                <span>{session.updated}</span>
-                <small>{session.repo}</small>
-              </button>
-            ))}
-          </div>
-        </section>
+        {codeHomeView === "home" && (
+          <div className="noti-code-home-grid-compact">
+            <article className="dev-card dev-continue-card compact-card">
+              <div className="dev-card-heading">
+                <strong>Continue working</strong>
+              </div>
+              {activeSession ? (
+                <div className="dev-current-session compact-session-card">
+                  <div className="dev-session-title-row">
+                    <h2>{activeSession.title}</h2>
+                    <span>{activeSession.status}</span>
+                  </div>
+                  <p>{activeSession.updated}</p>
+                  <div className="dev-repo-row">
+                    <span>GitHub</span>
+                    <span>{activeSession.repo}</span>
+                    <span>{activeSession.branch}</span>
+                  </div>
+                  <div className="dev-session-actions">
+                    <button type="button" className="dev-primary-button" onClick={() => openSession(activeSession.id)}>Continue Session</button>
+                    <div className="dev-menu-wrap">
+                      <button type="button" className="dev-more-button" onClick={() => setSessionMenuOpen((open) => !open)}>•••</button>
+                      {sessionMenuOpen && (
+                        <div className="dev-session-menu" onMouseLeave={() => setSessionMenuOpen(false)}>
+                          <button type="button" onClick={() => openSession(activeSession.id)}>Open</button>
+                          <button type="button" onClick={() => saveSnapshot()}>Save snapshot</button>
+                          <button type="button" className="danger" onClick={() => deleteSession(activeSession.id)}>Delete session</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="dev-empty-state">
+                  <strong>No active sessions.</strong>
+                  <span>Create a session to start building.</span>
+                  <button type="button" className="dev-primary-button" onClick={createSession}>+ New Session</button>
+                </div>
+              )}
+            </article>
 
-        <section className="dev-section-block">
-          <div className="dev-section-header">
-            <strong>Your Integrations</strong>
+            <article className="dev-card dev-activity-card compact-card">
+              <div className="dev-card-heading">
+                <strong>Activity</strong>
+              </div>
+              <div className="dev-empty-state compact-empty">
+                <strong>Clean slate.</strong>
+                <span>Run, snapshot, and GitHub activity will appear here later.</span>
+              </div>
+            </article>
           </div>
-          <div className="dev-integration-row">
+        )}
+
+        {codeHomeView === "sessions" && (
+          <section className="dev-section-block compact-section">
+            <div className="dev-section-header">
+              <strong>Sessions</strong>
+              <button type="button" onClick={createSession}>+ New Session</button>
+            </div>
+            <div className="dev-session-list-compact">
+              {sessions.length ? sessions.map((session) => (
+                <div key={session.id} className="dev-session-row">
+                  <button type="button" onClick={() => openSession(session.id)}>
+                    <strong>{session.title}</strong>
+                    <span>{session.repo} · {session.branch}</span>
+                    <small>{session.updated}</small>
+                  </button>
+                  <button type="button" className="dev-delete-row" onClick={() => deleteSession(session.id)}>Delete</button>
+                </div>
+              )) : (
+                <div className="dev-empty-state">
+                  <strong>No sessions yet.</strong>
+                  <span>Create one when you are ready.</span>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {codeHomeView === "activity" && (
+          <section className="dev-section-block compact-section">
+            <div className="dev-section-header">
+              <strong>Activity</strong>
+            </div>
+            <div className="dev-empty-state wide-empty">
+              <strong>No recent activity.</strong>
+              <span>This stays quiet until GitHub, snapshots, or session events are connected.</span>
+            </div>
+          </section>
+        )}
+
+        <section className="dev-section-block compact-section">
+          <div className="dev-section-header">
+            <strong>Integrations</strong>
+          </div>
+          <div className="dev-integration-row compact-integrations">
             <button type="button" className="dev-integration-card">
               <span>◉</span>
               <strong>GitHub</strong>
-              <small>Connected later</small>
+              <small>Connect repo context later</small>
             </button>
             <button type="button" className="dev-integration-card">
               <span>⌘</span>
               <strong>VS Code</strong>
-              <small>Available later</small>
+              <small>Open locally later</small>
             </button>
-            <button type="button" className="dev-integration-card muted" onClick={newSnippet}>
+            <button type="button" className="dev-integration-card muted" onClick={() => setCodeHomeView("activity")}>
               <span>＋</span>
-              <strong>More Integrations</strong>
-              <small>Connect tools you use</small>
+              <strong>More</strong>
+              <small>Keep optional</small>
             </button>
           </div>
         </section>
@@ -2288,9 +3498,19 @@ export function CalendarGrid() {
     );
   }
 
+  const filteredQuickFiles = fileList.filter((file) =>
+    file.toLowerCase().includes(quickOpenQuery.toLowerCase()),
+  );
+
   return (
-    <section className="noti-code-session-space">
-      <header className="noti-code-session-header">
+    <section className={`noti-code-session-space vscode-shell ${explorerOpen ? "explorer-visible" : "explorer-hidden"} ${rightPanelOpen ? "right-panel-visible" : "right-panel-collapsed"}`}>
+      <div className="compiler-hover-zone" aria-hidden="true" />
+      <div className="compiler-floating-window-controls" aria-label="Window controls">
+        <button type="button" onClick={minimiseCompilerWindow} title="Minimise window">—</button>
+        <button type="button" onClick={toggleCompilerFullscreen} title="Maximise window">□</button>
+        <button type="button" onClick={closeCompilerWindow} title="Close window">×</button>
+      </div>
+      <header className="noti-code-session-header vscode-session-header">
         <div className="noti-code-session-title">
           <button
             type="button"
@@ -2302,121 +3522,286 @@ export function CalendarGrid() {
             ☰
           </button>
           <span className="noti-code-chevron">⌁</span>
-          <strong>Noti Spatial Calendar</strong>
+          <strong>{activeSession?.title ?? "Untitled Session"}</strong>
           <span className="noti-code-active-dot" />
           <small>Active</small>
         </div>
 
         <div className="noti-code-session-actions">
-          <button type="button" className="noti-code-pill">noti-app⌄</button>
-          <button type="button" className="noti-code-pill">main⌄</button>
-          <button type="button" className="noti-code-icon-button" onClick={copyCode} title="Copy code">⧉</button>
-          <button type="button" className="noti-code-icon-button" onClick={saveSnapshot} title="Save snapshot">◌</button>
-          <button type="button" className="noti-code-primary-button" onClick={runCode}>{running ? "Running…" : "▷ Run"}</button>
+          <button type="button" className="noti-code-pill">{activeSession?.repo ?? "noti-app"}⌄</button>
+          <button type="button" className="noti-code-pill">{activeSession?.branch ?? "main"}⌄</button>
+          <button type="button" className="noti-code-icon-button tooltip-button" onClick={() => setExplorerOpen((current) => !current)} title="Toggle Explorer — ⌘B" data-tooltip="Explorer">◧</button>
+          <button type="button" className="noti-code-icon-button tooltip-button" onClick={() => setQuickOpenOpen(true)} title="Quick open — ⌘P" data-tooltip="Quick open">⌕</button>
+          <div className="noti-code-upload-wrap">
+            <button type="button" className="noti-code-icon-button tooltip-button" onClick={() => setUploadMenuOpen((current) => !current)} title="Import files or folder" data-tooltip="Import">⇧</button>
+            {uploadMenuOpen && (
+              <div className="noti-code-upload-menu" onMouseDown={(event) => event.stopPropagation()}>
+                <button type="button" onClick={() => fileUploadRef.current?.click()}>Import files</button>
+                <button type="button" onClick={() => folderUploadRef.current?.click()}>Import folder</button>
+              </div>
+            )}
+          </div>
+          <button type="button" className="noti-code-icon-button tooltip-button" onClick={() => setBottomPanelOpen((current) => !current)} title="Toggle terminal/problems panel — ⌘J" data-tooltip="Bottom panel">⌄</button>
+          <button type="button" className="noti-code-icon-button tooltip-button" onClick={() => setRightPanelOpen((current) => !current)} title="Toggle Run / Notes / Linked panel" data-tooltip="Right panel">◫</button>
+          <button type="button" className="noti-code-icon-button tooltip-button" onClick={copyCode} title="Copy active file" data-tooltip="Copy">⧉</button>
+          <button type="button" className="noti-code-icon-button tooltip-button" onClick={saveSnapshot} title="Save snapshot — ⌘S" data-tooltip="Snapshot">◌</button>
+          <button type="button" className="noti-code-icon-button tooltip-button danger" onClick={deleteActiveFile} title="Remove active file from session" data-tooltip="Remove file">⌫</button>
+          <button type="button" className="noti-code-primary-button tooltip-button" onClick={runCode} title="Run — ⌘↵" data-tooltip="Run session">{running ? "Running…" : "▷ Run"}</button>
         </div>
       </header>
 
-      <div className="noti-code-editor-layout">
-        <aside className="noti-code-files-panel" aria-label="File explorer">
-          <div className="noti-code-panel-heading">
-            <strong>Files</strong>
-            <span>
-              <button type="button" title="New file">＋</button>
-              <button type="button" title="New folder">▣</button>
-            </span>
-          </div>
+      <input
+        ref={fileUploadRef}
+        className="noti-code-file-upload"
+        type="file"
+        multiple
+        onChange={(event) => uploadFiles(event.target.files)}
+      />
+      <input
+        ref={folderUploadRef}
+        className="noti-code-file-upload"
+        type="file"
+        multiple
+        onChange={(event) => uploadFiles(event.target.files)}
+      />
 
-          <div className="noti-code-file-tree">
-            <button type="button">⌄ src</button>
-            <button type="button">&nbsp;&nbsp;⌄ components</button>
-            <button type="button">&nbsp;&nbsp;&nbsp;&nbsp;⌄ calendar</button>
-            {["Calendar.tsx", "useCalendar.ts", "calendar.types.ts"].map((file) => (
-              <button
-                type="button"
-                key={file}
-                className={activeSnippet === file ? "active-file" : ""}
-                onClick={() => setActiveSnippet(file)}
-              >
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{file}
+      {quickOpenOpen && (
+        <div className="noti-code-quick-open" onMouseDown={(event) => event.stopPropagation()}>
+          <label>
+            <span>⌘P</span>
+            <input
+              autoFocus
+              value={quickOpenQuery}
+              onChange={(event) => setQuickOpenQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setQuickOpenOpen(false);
+                if (event.key === "Enter" && filteredQuickFiles[0]) openFile(filteredQuickFiles[0]);
+              }}
+              placeholder="Quick open file…"
+            />
+          </label>
+          <div className="noti-code-quick-results">
+            {filteredQuickFiles.slice(0, 8).map((file) => (
+              <button key={file} type="button" onClick={() => openFile(file)}>
+                <span>#</span>
+                <strong>{file}</strong>
               </button>
             ))}
-            <button type="button">&nbsp;&nbsp;› hooks</button>
-            <button type="button">&nbsp;&nbsp;› styles</button>
-            <button type="button">&nbsp;&nbsp;› utils</button>
-            <button type="button">App.tsx</button>
-            <button type="button">index.tsx</button>
-            <button type="button">.gitignore</button>
-            <button type="button">package.json</button>
-            <button type="button">README.md</button>
-            <button type="button">tsconfig.json</button>
+          </div>
+        </div>
+      )}
+
+      <div className="noti-code-editor-layout vscode-layout">
+        {explorerOpen && (
+          <aside className="noti-code-files-panel vscode-explorer" aria-label="File explorer">
+            <div className="noti-code-panel-heading vscode-panel-title">
+              <strong>EXPLORER</strong>
+              <span>
+                <button type="button" title="New file" onClick={newFile}>＋</button>
+                <button type="button" title="New folder" onClick={newFolder}>▣</button>
+                <button type="button" title="Import files or folder" onClick={() => setUploadMenuOpen((current) => !current)}>⇧</button>
+                <button type="button" title="More">…</button>
+              </span>
+            </div>
+
+            <div className="vscode-section-block">
+              <button type="button" className="vscode-section-title">⌄ OPEN EDITORS</button>
+              {openFiles.map((file) => (
+                <button
+                  type="button"
+                  key={file}
+                  className={`vscode-open-editor ${activeSnippet === file ? "active-file" : ""}`}
+                  onClick={() => openFile(file)}
+                >
+                  <span>#</span>
+                  <strong>{file}</strong>
+                  <em>src</em>
+                </button>
+              ))}
+            </div>
+
+            <div className="vscode-section-block file-tree-block">
+              <button type="button" className="vscode-section-title">⌄ FRONTEND</button>
+              <div className="noti-code-file-tree">
+                <button type="button">› .vscode</button>
+                <button type="button">› node_modules</button>
+                <button type="button">› public</button>
+                {customFolders.map((folder) => <button key={folder} type="button">› {folder}</button>)}
+                <button type="button">⌄ src</button>
+                <button type="button">&nbsp;&nbsp;› assets</button>
+                <button type="button">&nbsp;&nbsp;⌄ components</button>
+                <button type="button">&nbsp;&nbsp;&nbsp;&nbsp;⌄ calendar</button>
+                {["Calendar.tsx", "useCalendar.ts", "calendar.types.ts"].map((file) => (
+                  <button
+                    type="button"
+                    key={file}
+                    className={activeSnippet === file ? "active-file" : ""}
+                    onClick={() => openFile(file)}
+                  >
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# {file}
+                  </button>
+                ))}
+                <button type="button">&nbsp;&nbsp;› hooks</button>
+                <button type="button">&nbsp;&nbsp;› styles</button>
+                <button type="button">&nbsp;&nbsp;› utils</button>
+                {["App.tsx", "App.css", "main.tsx", "vite-env.d.ts", ".gitignore", "package.json", "README.md", "tsconfig.json"].map((file) => (
+                  <button key={file} type="button" className={activeSnippet === file ? "active-file" : ""} onClick={() => openFile(file)}>
+                    # {file}
+                  </button>
+                ))}
+                {Object.keys(customFiles).map((file) => (
+                  <button key={file} type="button" className={activeSnippet === file ? "active-file imported-file" : "imported-file"} onClick={() => openFile(file)}>
+                    ⇧ {file}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="vscode-collapsed-drawers">
+              <button type="button">› OUTLINE</button>
+              <button type="button">› TIMELINE</button>
+            </div>
+
+            <footer className="noti-code-files-footer vscode-status-strip">
+              <span>⑂ main⌄</span>
+              <span>◌ 0 0</span>
+            </footer>
+          </aside>
+        )}
+
+        <main className="noti-code-editor-panel vscode-editor-panel">
+          <div className="vscode-tabs-row">
+            {openFiles.map((file) => (
+              <button
+                key={file}
+                type="button"
+                className={`noti-code-editor-tab ${activeSnippet === file ? "active-tab" : ""}`}
+                onClick={() => openFile(file)}
+              >
+                <span># {file}</span>
+                <i>{activeSnippet === file ? "●" : ""}</i>
+                <b onClick={(event) => { event.stopPropagation(); closeFile(file); }}>×</b>
+              </button>
+            ))}
           </div>
 
-          <footer className="noti-code-files-footer">
-            <span>main⌄</span>
-            <span>◌ 0 0</span>
-          </footer>
-        </aside>
-
-        <main className="noti-code-editor-panel">
-          <div className="noti-code-editor-tab">
-            <span>{activeSnippet}</span>
-            <button type="button" aria-label="Close file">×</button>
+          <div className="vscode-breadcrumb-row">
+            <span>src</span><span>›</span><span>{activeSnippet}</span><span>›</span><strong>{activeSnippet.replace(/\..+$/, "")}</strong>
           </div>
 
-          <textarea
-            className="noti-code-editor"
-            value={code}
-            onChange={(event) => setCode(event.target.value)}
-            spellCheck={false}
-          />
+          <div className="vscode-editor-shell">
+            <div className="vscode-line-numbers" aria-hidden="true">
+              {Array.from({ length: Math.max(28, code.split("\n").length + 2) }).map((_, index) => (
+                <span key={index}>{index + 1}</span>
+              ))}
+            </div>
+            <textarea
+              ref={codeEditorRef}
+              className="noti-code-editor vscode-code-textarea"
+              value={code}
+              onChange={(event) => {
+                setCode(event.target.value);
+                updateEditorStats(event.currentTarget);
+              }}
+              onClick={(event) => updateEditorStats(event.currentTarget)}
+              onKeyUp={(event) => updateEditorStats(event.currentTarget)}
+              onKeyDown={handleCodeEditorKeyDown}
+              spellCheck={false}
+              aria-label="Code editor"
+            />
+            <div className="vscode-minimap" aria-hidden="true">
+              {code.split("\n").slice(0, 38).map((line, index) => (
+                <span key={index} style={{ width: `${Math.min(92, Math.max(14, line.length * 1.5))}%` }} />
+              ))}
+            </div>
+          </div>
 
-          <footer className="noti-code-editor-status">
-            <span>Ln 12, Col 5</span>
-            <span>Spaces: 2</span>
+          {bottomPanelOpen && (
+            <section className="vscode-bottom-panel">
+              <div className="vscode-bottom-tabs">
+                {(["Terminal", "Problems", "Output", "Git"] as const).map((tab) => (
+                  <button key={tab} type="button" className={bottomPanelTab === tab ? "active" : ""} onClick={() => setBottomPanelTab(tab)}>{tab}</button>
+                ))}
+                <button type="button" onClick={() => setBottomPanelOpen(false)}>×</button>
+              </div>
+              {bottomPanelTab === "Terminal" && (
+                <div className="vscode-terminal-panel">
+                  <div>{terminalHistory.map((line, index) => <span key={`${line}-${index}`}>{line}</span>)}</div>
+                  <label><span>$</span><input value={terminalCommand} onChange={(event) => setTerminalCommand(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") runTerminalCommand(); }} placeholder="git status" /></label>
+                </div>
+              )}
+              {bottomPanelTab === "Problems" && <div className="vscode-empty-panel">✓ No problems detected</div>}
+              {bottomPanelTab === "Output" && <div className="vscode-terminal-panel"><div>{output.length ? output.map((line) => <span key={line}>{line}</span>) : <span>No output yet. Run the session with ⌘↵.</span>}</div></div>}
+              {bottomPanelTab === "Git" && <div className="vscode-git-panel"><strong>Source Control</strong><p>main · local workspace</p><input value={commitMessage} onChange={(event) => setCommitMessage(event.target.value)} placeholder="Commit message" /><button type="button" onClick={commitChanges}>Commit</button><button type="button" onClick={() => setTerminalHistory((current) => [...current, "$ git push origin main", "Push queued for future GitHub integration"])}>Push</button></div>}
+            </section>
+          )}
+
+          <footer className="noti-code-editor-status vscode-status-bar">
+            <span>Ln {editorStats.line}, Col {editorStats.column}</span>
+            <button type="button" onClick={() => insertAtSelection("  ")}>Spaces: 2</button>
             <span>UTF-8</span>
+            <span>LF</span>
             <span>{language}</span>
+            <button type="button" onClick={() => setBottomPanelOpen((current) => !current)}>Panel ⌘J</button>
+            <button type="button" onClick={deleteActiveFile} title="Remove active file from this session">Remove file</button>
             <strong>● Auto-save on</strong>
           </footer>
         </main>
 
-        <aside className="noti-code-right-panel" aria-label="Run output and linked context">
-          <section className="noti-code-run-card">
-            <div className="noti-code-run-heading">
-              <strong>Run</strong>
-              <button type="button" className="noti-code-primary-button compact" onClick={runCode}>▷</button>
+        {rightPanelOpen ? (
+          <aside className="noti-code-right-panel vscode-right-panel" aria-label="Run output, notes, and linked context">
+            <div className="noti-code-right-panel-tabs" role="tablist" aria-label="Right panel sections">
+              {(["Run", "Notes", "Linked"] as const).map((tab) => (
+                <button key={tab} type="button" className={rightPanelTab === tab ? "active" : ""} onClick={() => setRightPanelTab(tab)}>{tab}</button>
+              ))}
+              <button type="button" className="collapse-right-panel" onClick={() => setRightPanelOpen(false)} title="Collapse right panel">›</button>
             </div>
-            <div className="noti-code-tabs">
-              <button type="button" className="active">Output</button>
-              <button type="button">Console</button>
-            </div>
-            <div className="noti-code-output-box">
-              {outputOpen ? output.map((line) => <span key={line}>{line}</span>) : <p>No output yet.</p>}
-              <div className="noti-code-success-mark">✓<small>No errors found</small></div>
-            </div>
-            <button type="button" className="noti-code-clear-button" onClick={() => { setOutput([]); setOutputOpen(false); }}>Clear</button>
-          </section>
 
-          <section className="noti-code-context-card">
-            <div className="noti-code-panel-heading">
-              <strong>Notes</strong>
-              <span>
-                <button type="button">◌</button>
-                <button type="button">＋</button>
-              </span>
-            </div>
-            <textarea
-              className="noti-code-note-box"
-              defaultValue={"Working on the new spatial calendar layout.\n\nFocus on interaction polish and animation smoothness."}
-              spellCheck={false}
-            />
-          </section>
+            {rightPanelTab === "Run" && (
+              <section className="noti-code-run-card">
+                <div className="noti-code-run-heading">
+                  <strong>Run</strong>
+                  <button type="button" className="noti-code-primary-button compact" onClick={runCode} title="Run session — ⌘↵">▷</button>
+                </div>
+                <div className="noti-code-tabs">
+                  <button type="button" className="active" onClick={() => { setBottomPanelOpen(true); setBottomPanelTab("Output"); }}>Output</button>
+                  <button type="button" onClick={() => { setBottomPanelOpen(true); setBottomPanelTab("Terminal"); }}>Console</button>
+                </div>
+                <div className="noti-code-output-box">
+                  {outputOpen ? output.map((line) => <span key={line}>{line}</span>) : <p>No output yet.</p>}
+                  <div className="noti-code-success-mark">✓<small>No errors found</small></div>
+                </div>
+                <button type="button" className="noti-code-clear-button" onClick={() => { setOutput([]); setOutputOpen(false); }}>Clear</button>
+              </section>
+            )}
 
-          <section className="noti-code-linked-card">
-            <strong>Linked</strong>
-            <button type="button"><span>◉</span><div><b>noti-app</b><small>GitHub Repository</small></div></button>
-            <button type="button"><span>⑂</span><div><b>main</b><small>Branch</small></div></button>
-          </section>
-        </aside>
+            {rightPanelTab === "Notes" && (
+              <section className="noti-code-context-card full-height-card">
+                <div className="noti-code-panel-heading">
+                  <strong>Notes</strong>
+                  <span><button type="button" title="Save note" onClick={() => setOutput(["✓ Notes saved locally"])}>◌</button><button type="button" title="New note" onClick={() => setWorkspaceNote("")}>＋</button></span>
+                </div>
+                <textarea
+                  className="noti-code-note-box"
+                  value={workspaceNote}
+                  onChange={(event) => setWorkspaceNote(event.target.value)}
+                  spellCheck={false}
+                />
+              </section>
+            )}
+
+            {rightPanelTab === "Linked" && (
+              <section className="noti-code-linked-card full-height-card">
+                <strong>Linked</strong>
+                <button type="button" onClick={() => { setBottomPanelOpen(true); setBottomPanelTab("Git"); }}><span>◉</span><div><b>noti-app</b><small>GitHub Repository</small></div></button>
+                <button type="button" onClick={() => { setBottomPanelOpen(true); setBottomPanelTab("Git"); }}><span>⑂</span><div><b>main</b><small>Branch</small></div></button>
+                <button type="button" onClick={() => setUploadMenuOpen(true)}><span>⇧</span><div><b>Imported files</b><small>{Object.keys(customFiles).length} local file reference{Object.keys(customFiles).length === 1 ? "" : "s"}</small></div></button>
+              </section>
+            )}
+          </aside>
+        ) : (
+          <button type="button" className="noti-code-right-rail-reopen" onClick={() => setRightPanelOpen(true)} title="Open Run / Notes / Linked panel">‹</button>
+        )}
       </div>
     </section>
   );

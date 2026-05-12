@@ -5940,9 +5940,7 @@ select:focus-visible {
   content: "Noti Code";
 }
 
-.noti-code-session-active .workspace-topbar,
-.noti-code-session-active .workspace-sidebar-rail,
-.noti-code-session-active .workspace-sidebar-drawer {
+.noti-code-session-active .workspace-topbar {
   display: none !important;
 }
 
@@ -6343,5 +6341,2575 @@ select:focus-visible {
 
   .noti-code-session-actions .noti-code-pill:nth-child(n+3) {
     display: none;
+  }
+}
+
+
+/* Noti Code immersive chrome behaviour */
+.workspace-code-space .workspace-sidebar-rail.code-rail-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-22px) scale(0.96);
+}
+
+.workspace-code-space.code-rail-peek .workspace-sidebar-rail {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0) scale(1);
+}
+
+.workspace-code-space.sidebar-collapsed .workspace-sidebar-drawer {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-18px) scale(0.985);
+}
+
+.workspace-code-space.sidebar-expanded .workspace-sidebar-drawer {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0) scale(1);
+}
+
+.noti-code-session-active .workspace-sidebar-rail {
+  top: 22px;
+  bottom: 22px;
+}
+
+.noti-code-session-active .workspace-sidebar-drawer {
+  top: 22px;
+  bottom: 22px;
+}
+
+/* === Noti Code engineering home polish =================================== */
+.workspace-card.code-environment {
+  --dev-accent: rgba(58, 214, 130, 0.96);
+  --dev-accent-soft: rgba(58, 214, 130, 0.15);
+  --dev-accent-strong: rgba(90, 235, 154, 0.98);
+  --dev-border: rgba(255, 255, 255, 0.095);
+  --dev-border-strong: rgba(255, 255, 255, 0.17);
+  background:
+    radial-gradient(circle at 22% 0%, rgba(58, 214, 130, 0.105), transparent 27%),
+    radial-gradient(circle at 78% 2%, rgba(255, 255, 255, 0.052), transparent 30%),
+    linear-gradient(180deg, rgba(12, 14, 18, 0.70), rgba(3, 5, 7, 0.76));
+}
+
+.workspace-card.code-environment .dev-eyebrow::before {
+  background: linear-gradient(135deg, rgba(58, 214, 130, 0.98), rgba(180, 255, 210, 0.75));
+  box-shadow: 0 0 22px rgba(58, 214, 130, 0.30);
+}
+
+.workspace-card.code-environment .dev-primary-button,
+.workspace-card.code-environment .noti-code-primary-button {
+  border-color: rgba(58, 214, 130, 0.46) !important;
+  background: linear-gradient(180deg, rgba(58, 214, 130, 0.96), rgba(35, 155, 92, 0.96)) !important;
+  box-shadow: 0 14px 32px rgba(35, 155, 92, 0.21) !important;
+  color: rgba(5, 10, 7, 0.96) !important;
+}
+
+.workspace-card.code-environment .dev-session-title-row span,
+.workspace-card.code-environment .noti-code-session-title small,
+.workspace-card.code-environment .noti-code-active-dot,
+.workspace-card.code-environment .noti-code-editor-status strong {
+  color: var(--dev-accent-strong) !important;
+}
+
+.workspace-card.code-environment .noti-code-active-dot,
+.workspace-card.code-environment .dev-repo-row span::before {
+  background: var(--dev-accent) !important;
+  box-shadow: 0 0 18px rgba(58, 214, 130, 0.28);
+}
+
+.workspace-card.code-environment .dev-current-session {
+  border-color: rgba(58, 214, 130, 0.22);
+  background: linear-gradient(180deg, rgba(58, 214, 130, 0.09), rgba(255, 255, 255, 0.032));
+}
+
+.workspace-card.code-environment .dev-current-session:hover,
+.workspace-card.code-environment .dev-small-session:hover,
+.workspace-card.code-environment .dev-integration-card:hover,
+.workspace-card.code-environment .dev-snippet-card:hover,
+.workspace-card.code-environment .dev-session-row:hover {
+  border-color: rgba(58, 214, 130, 0.24);
+  background:
+    linear-gradient(180deg, rgba(58, 214, 130, 0.07), rgba(255, 255, 255, 0.035)),
+    rgba(10, 12, 16, 0.58);
+}
+
+.noti-code-compact-home {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 30px 26px !important;
+  gap: 14px !important;
+}
+
+.noti-code-compact-home .dev-home-topbar h1 {
+  font-size: clamp(25px, 3.1vw, 35px);
+  letter-spacing: -0.052em;
+}
+
+.noti-code-compact-home .dev-home-topbar p {
+  font-size: 13px;
+  max-width: 570px;
+}
+
+.noti-code-compact-home .dev-home-actions {
+  gap: 8px;
+}
+
+.noti-code-compact-home .dev-search-field {
+  width: min(320px, 29vw);
+  height: 34px;
+  border-radius: 11px;
+  font-size: 12px;
+}
+
+.noti-code-compact-home .dev-primary-button,
+.noti-code-compact-home .dev-home-actions button,
+.noti-code-compact-home .dev-section-header button,
+.noti-code-compact-home .dev-session-actions button {
+  min-height: 34px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.dev-home-view-switcher {
+  width: fit-content;
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dev-home-view-switcher button {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.56);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.dev-home-view-switcher button.active,
+.dev-home-view-switcher button:hover {
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.noti-code-home-grid-compact {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.25fr) minmax(300px, 0.75fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.noti-code-compact-home .compact-card {
+  min-height: 150px;
+  padding: 14px;
+  border-radius: 17px;
+}
+
+.noti-code-compact-home .dev-card-heading {
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.noti-code-compact-home .compact-session-card {
+  padding: 14px;
+  border-radius: 14px;
+}
+
+.noti-code-compact-home .dev-session-title-row h2 {
+  font-size: 18px;
+}
+
+.noti-code-compact-home .dev-current-session p {
+  margin: 6px 0 12px;
+  font-size: 12px;
+}
+
+.noti-code-compact-home .dev-repo-row {
+  margin-bottom: 12px;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.dev-menu-wrap {
+  position: relative;
+}
+
+.dev-session-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 80;
+  min-width: 172px;
+  padding: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 13px;
+  background: rgba(16, 17, 19, 0.96);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.46), inset 0 1px rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(24px);
+}
+
+.dev-session-menu button {
+  width: 100%;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dev-session-menu button:hover {
+  background: rgba(255, 255, 255, 0.075);
+  color: #fff;
+}
+
+.dev-session-menu button.danger {
+  color: rgba(255, 170, 170, 0.94);
+}
+
+.dev-empty-state {
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.105);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.58);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.dev-empty-state strong {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.dev-empty-state span {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.compact-empty {
+  min-height: 96px;
+}
+
+.compact-section {
+  gap: 10px !important;
+}
+
+.dev-session-list-compact {
+  display: grid;
+  gap: 8px;
+}
+
+.dev-session-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.dev-session-row > button:first-child {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.84);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dev-session-row span,
+.dev-session-row small {
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 12px;
+}
+
+.dev-delete-row {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 120, 120, 0.18);
+  border-radius: 9px;
+  background: rgba(255, 90, 90, 0.05);
+  color: rgba(255, 170, 170, 0.9);
+  cursor: pointer;
+}
+
+.compact-integrations {
+  grid-template-columns: repeat(3, minmax(160px, 1fr)) !important;
+  max-width: 760px;
+}
+
+.noti-code-compact-home .dev-integration-card {
+  min-height: 64px;
+  padding: 11px;
+  border-radius: 15px;
+}
+
+/* Compact, familiar engineering surface */
+.noti-code-session-space {
+  background:
+    radial-gradient(circle at 62% 0%, rgba(58, 214, 130, 0.06), transparent 28%),
+    linear-gradient(180deg, rgba(7, 10, 14, 0.74), rgba(3, 4, 6, 0.78));
+}
+
+.noti-code-session-header {
+  min-height: 52px;
+  height: 52px;
+  padding: 0 12px 0 10px;
+}
+
+.noti-code-session-title strong {
+  font-size: 14px;
+}
+
+.noti-code-session-actions {
+  gap: 7px;
+}
+
+.noti-code-pill,
+.noti-code-icon-button,
+.noti-code-primary-button {
+  height: 32px;
+  min-height: 32px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+
+.noti-code-editor-layout {
+  grid-template-columns: minmax(210px, 18%) minmax(0, 1fr) minmax(235px, 19%) !important;
+}
+
+.noti-code-files-panel,
+.noti-code-editor-panel,
+.noti-code-right-panel {
+  background: rgba(6, 8, 12, 0.48);
+}
+
+.noti-code-files-panel {
+  font-size: 12px;
+}
+
+.noti-code-panel-heading {
+  min-height: 40px;
+  font-size: 12px;
+}
+
+.noti-code-file-tree {
+  padding: 8px 10px;
+  gap: 2px;
+}
+
+.noti-code-file-tree button {
+  min-height: 28px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+.noti-code-file-tree .active-file {
+  background: rgba(58, 214, 130, 0.10);
+  color: rgba(230, 255, 238, 0.96);
+}
+
+.noti-code-editor-panel {
+  grid-template-rows: 38px minmax(0, 1fr) 32px;
+}
+
+.noti-code-editor-tab {
+  height: 38px;
+  width: 174px;
+  font-size: 12px;
+  border-bottom-color: rgba(58, 214, 130, 0.35);
+}
+
+.noti-code-editor {
+  padding: 18px 28px;
+  font-size: 13px;
+  line-height: 1.56;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px) 0 0 / 44px 100%,
+    rgba(2, 6, 10, 0.32);
+}
+
+.noti-code-editor-status {
+  min-height: 32px;
+  font-size: 11px;
+}
+
+.noti-code-right-panel {
+  gap: 10px;
+  padding: 10px;
+}
+
+.noti-code-run-card,
+.noti-code-context-card,
+.noti-code-linked-card {
+  border-radius: 12px;
+}
+
+.noti-code-run-heading {
+  padding: 9px 10px 6px;
+}
+
+.noti-code-tabs {
+  padding: 0 10px 8px;
+  gap: 14px;
+}
+
+.noti-code-tabs .active {
+  border-bottom-color: var(--dev-accent);
+}
+
+.noti-code-output-box {
+  min-height: 170px;
+  margin: 0 10px 10px;
+  padding: 14px;
+  font-size: 12px;
+}
+
+.noti-code-note-box {
+  min-height: 96px;
+  font-size: 12px;
+}
+
+@media (max-width: 980px) {
+  .noti-code-home-grid-compact,
+  .compact-integrations {
+    grid-template-columns: 1fr !important;
+  }
+
+  .noti-code-editor-layout {
+    grid-template-columns: 190px minmax(0, 1fr) 210px !important;
+  }
+}
+
+/* === Noti Code VS Code-style shell + shortcuts patch ===================== */
+.workspace-card.code-environment {
+  --code-accent: rgba(75, 220, 140, 0.96);
+  --code-accent-soft: rgba(75, 220, 140, 0.14);
+  --code-line: rgba(255, 255, 255, 0.072);
+  --code-panel: rgba(8, 11, 17, 0.76);
+  --code-panel-strong: rgba(12, 15, 22, 0.92);
+}
+
+.noti-code-session-space.vscode-shell {
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 22% 0%, rgba(75, 220, 140, 0.075), transparent 26%),
+    linear-gradient(180deg, rgba(8, 11, 18, 0.88), rgba(3, 5, 8, 0.88));
+}
+
+.vscode-session-header {
+  height: 50px !important;
+  min-height: 50px !important;
+  padding: 0 10px 0 12px !important;
+  background: rgba(10, 13, 20, 0.78) !important;
+}
+
+.vscode-session-header .noti-code-menu-button,
+.vscode-session-header .noti-code-icon-button,
+.vscode-session-header .noti-code-pill,
+.vscode-session-header .noti-code-primary-button {
+  height: 30px;
+  min-height: 30px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.vscode-session-header .noti-code-primary-button {
+  min-width: 74px;
+}
+
+.noti-code-editor-layout.vscode-layout {
+  grid-template-columns: minmax(210px, 18%) minmax(0, 1fr) minmax(230px, 18%);
+  background: rgba(4, 6, 10, 0.24);
+}
+
+.noti-code-editor-layout.vscode-layout:not(:has(.vscode-explorer)) {
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 18%);
+}
+
+.vscode-explorer,
+.vscode-right-panel {
+  background: rgba(7, 10, 16, 0.78) !important;
+}
+
+.vscode-panel-title {
+  min-height: 38px;
+  padding: 9px 10px 7px !important;
+}
+
+.vscode-panel-title strong {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.74);
+}
+
+.vscode-section-block {
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  padding: 3px 0 5px;
+}
+
+.vscode-section-title,
+.vscode-collapsed-drawers button {
+  width: 100%;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.74);
+  text-align: left;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.vscode-open-editor {
+  width: calc(100% - 8px);
+  min-height: 27px;
+  margin: 1px 4px;
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.68);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vscode-open-editor strong {
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vscode-open-editor em {
+  font-size: 10px;
+  font-style: normal;
+  opacity: 0.45;
+}
+
+.vscode-open-editor:hover,
+.vscode-open-editor.active-file {
+  background: rgba(255, 255, 255, 0.075);
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.file-tree-block {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.vscode-explorer .noti-code-file-tree {
+  padding: 0 5px 8px !important;
+}
+
+.vscode-explorer .noti-code-file-tree button {
+  min-height: 24px !important;
+  border-radius: 5px !important;
+  padding: 0 8px !important;
+  font-size: 11px !important;
+}
+
+.vscode-collapsed-drawers {
+  margin-top: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.vscode-status-strip {
+  min-height: 30px !important;
+  height: 30px !important;
+  font-size: 10px !important;
+  padding: 0 9px !important;
+}
+
+.vscode-editor-panel {
+  grid-template-rows: 38px 28px minmax(0, 1fr) auto 30px !important;
+  background: rgba(6, 8, 13, 0.42) !important;
+}
+
+.vscode-tabs-row {
+  min-height: 38px;
+  display: flex;
+  align-items: end;
+  overflow-x: auto;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.066);
+  background: rgba(8, 11, 17, 0.64);
+}
+
+.vscode-tabs-row .noti-code-editor-tab {
+  width: auto !important;
+  min-width: 132px;
+  max-width: 190px;
+  height: 38px !important;
+  display: grid !important;
+  grid-template-columns: 1fr auto auto;
+  gap: 6px;
+  align-items: center;
+  border-bottom: 2px solid transparent !important;
+  background: rgba(255, 255, 255, 0.018) !important;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.vscode-tabs-row .noti-code-editor-tab.active-tab {
+  background: rgba(255, 255, 255, 0.055) !important;
+  border-bottom-color: var(--code-accent) !important;
+}
+
+.vscode-tabs-row .noti-code-editor-tab b,
+.vscode-tabs-row .noti-code-editor-tab i {
+  color: rgba(255, 255, 255, 0.44);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.vscode-breadcrumb-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.vscode-breadcrumb-row strong {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.vscode-editor-shell {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 58px;
+  overflow: hidden;
+  position: relative;
+}
+
+.vscode-line-numbers {
+  overflow: hidden;
+  padding-top: 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.035);
+  color: rgba(255, 255, 255, 0.32);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  text-align: right;
+}
+
+.vscode-line-numbers span {
+  display: block;
+  padding-right: 10px;
+}
+
+.vscode-code-textarea {
+  min-height: 0 !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 12px 16px !important;
+  font-size: 12.5px !important;
+  line-height: 1.65 !important;
+  tab-size: 2;
+  caret-color: var(--code-accent);
+  white-space: pre;
+}
+
+.vscode-code-textarea:focus {
+  outline: none !important;
+  box-shadow: inset 0 0 0 1px rgba(75, 220, 140, 0.12);
+}
+
+.vscode-minimap {
+  overflow: hidden;
+  padding: 9px 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.035);
+  opacity: 0.55;
+}
+
+.vscode-minimap span {
+  display: block;
+  height: 2px;
+  margin-bottom: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.vscode-status-bar {
+  min-height: 30px !important;
+  height: 30px !important;
+  justify-content: flex-end !important;
+  gap: 14px !important;
+  font-size: 10.5px !important;
+  background: rgba(7, 10, 15, 0.82);
+}
+
+.vscode-status-bar button {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font: inherit;
+  cursor: pointer;
+}
+
+.vscode-bottom-panel {
+  min-height: 150px;
+  max-height: 210px;
+  display: grid;
+  grid-template-rows: 30px minmax(0, 1fr);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(5, 7, 11, 0.86);
+}
+
+.vscode-bottom-tabs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.vscode-bottom-tabs button {
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.58);
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vscode-bottom-tabs button.active,
+.vscode-bottom-tabs button:hover {
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.vscode-bottom-tabs button:last-child {
+  margin-left: auto;
+}
+
+.vscode-terminal-panel {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 30px;
+  padding: 8px 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+}
+
+.vscode-terminal-panel div {
+  overflow-y: auto;
+}
+
+.vscode-terminal-panel span {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.vscode-terminal-panel label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.vscode-terminal-panel input,
+.vscode-git-panel input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.84);
+  font: inherit;
+}
+
+.vscode-empty-panel,
+.vscode-git-panel {
+  padding: 16px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+}
+
+.vscode-git-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vscode-git-panel button {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.vscode-right-panel {
+  padding: 10px !important;
+  gap: 10px !important;
+}
+
+.vscode-right-panel .noti-code-run-card,
+.vscode-right-panel .noti-code-context-card,
+.vscode-right-panel .noti-code-linked-card {
+  border-radius: 12px !important;
+}
+
+.vscode-right-panel .noti-code-output-box {
+  min-height: 176px;
+}
+
+.vscode-right-panel .noti-code-note-box {
+  min-height: 94px;
+  font-size: 12px;
+}
+
+.noti-code-quick-open {
+  position: absolute;
+  z-index: 200;
+  top: 68px;
+  left: 50%;
+  width: min(540px, 48vw);
+  transform: translateX(-50%);
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 14px;
+  background: rgba(10, 13, 18, 0.94);
+  box-shadow: 0 26px 90px rgba(0, 0, 0, 0.55), inset 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(28px);
+}
+
+.noti-code-quick-open label {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.noti-code-quick-open label span {
+  color: rgba(255, 255, 255, 0.42);
+  font-weight: 800;
+}
+
+.noti-code-quick-open input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.88);
+  font: inherit;
+}
+
+.noti-code-quick-results {
+  display: grid;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.noti-code-quick-results button {
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  text-align: left;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.noti-code-quick-results button:hover {
+  background: rgba(75, 220, 140, 0.12);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+@media (max-width: 1180px) {
+  .noti-code-editor-layout.vscode-layout {
+    grid-template-columns: 210px minmax(0, 1fr) 220px;
+  }
+
+  .vscode-session-header .noti-code-icon-button:nth-of-type(n+4) {
+    display: none;
+  }
+}
+
+/* Noti Code functional QoL polish */
+.noti-code-file-upload {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.imported-file {
+  color: rgba(150, 245, 185, 0.82) !important;
+}
+
+.vscode-panel-title button {
+  cursor: pointer;
+}
+
+.vscode-panel-title button:hover,
+.vscode-status-bar button:hover,
+.noti-code-linked-card button:hover {
+  border-color: rgba(91, 232, 146, 0.28);
+  background: rgba(91, 232, 146, 0.08);
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.vscode-status-bar button {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.58);
+  font: inherit;
+  border-radius: 6px;
+  padding: 2px 7px;
+  cursor: pointer;
+}
+
+.vscode-git-panel input {
+  min-width: 220px;
+}
+
+.noti-code-output-box span {
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* === Noti Code final compiler QoL patch ================================ */
+.noti-code-session-active .workspace-card {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(73, 220, 139, 0.09), transparent 34%),
+    linear-gradient(180deg, rgba(5, 7, 10, 0.58), rgba(2, 3, 5, 0.68)) !important;
+}
+
+.noti-code-session-space.vscode-shell {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(70, 215, 136, 0.075), transparent 30%),
+    linear-gradient(180deg, rgba(7, 9, 13, 0.50), rgba(2, 3, 5, 0.54)) !important;
+  backdrop-filter: blur(28px) saturate(125%);
+  -webkit-backdrop-filter: blur(28px) saturate(125%);
+}
+
+.vscode-editor-panel,
+.vscode-editor-shell,
+.vscode-code-textarea,
+.vscode-tabs-row,
+.vscode-breadcrumb-row,
+.vscode-status-bar {
+  background-color: transparent !important;
+}
+
+.vscode-editor-panel {
+  background:
+    linear-gradient(180deg, rgba(8, 11, 16, 0.42), rgba(3, 5, 8, 0.36)) !important;
+}
+
+.vscode-code-textarea {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px) 0 0 / 44px 100%,
+    transparent !important;
+}
+
+.noti-code-editor-layout.vscode-layout.right-panel-collapsed,
+.noti-code-session-space.right-panel-collapsed .noti-code-editor-layout.vscode-layout {
+  grid-template-columns: minmax(210px, 18%) minmax(0, 1fr) 34px !important;
+}
+
+.noti-code-session-space.right-panel-collapsed .vscode-editor-panel {
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.noti-code-right-rail-reopen {
+  width: 100%;
+  min-width: 34px;
+  border: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.065);
+  background: rgba(8, 11, 16, 0.46);
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 22px;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.noti-code-right-rail-reopen:hover {
+  background: rgba(75, 220, 140, 0.08);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.noti-code-right-panel-tabs {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px 7px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.noti-code-right-panel-tabs button {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.noti-code-right-panel-tabs button.active,
+.noti-code-right-panel-tabs button:hover {
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(75, 220, 140, 0.10);
+}
+
+.noti-code-right-panel-tabs .collapse-right-panel {
+  margin-left: auto;
+  width: 28px;
+  padding: 0;
+  font-size: 18px;
+}
+
+.full-height-card {
+  min-height: 0;
+  height: calc(100% - 42px);
+}
+
+.full-height-card .noti-code-note-box {
+  min-height: calc(100% - 58px);
+}
+
+.noti-code-upload-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.noti-code-upload-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 260;
+  min-width: 148px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 12px;
+  background: rgba(9, 12, 16, 0.96);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.52), inset 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.noti-code-upload-menu button {
+  width: 100%;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  text-align: left;
+  padding: 0 9px;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.noti-code-upload-menu button:hover {
+  background: rgba(75, 220, 140, 0.10);
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.tooltip-button {
+  position: relative;
+}
+
+.tooltip-button::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  z-index: 300;
+  left: 50%;
+  bottom: -34px;
+  transform: translateX(-50%) translateY(-3px);
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(9, 12, 16, 0.95);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 10px;
+  font-weight: 800;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.36);
+  transition: opacity 130ms ease, transform 130ms ease;
+}
+
+.tooltip-button:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.noti-code-icon-button.danger:hover {
+  border-color: rgba(255, 135, 135, 0.25) !important;
+  background: rgba(255, 90, 90, 0.09) !important;
+  color: rgba(255, 180, 180, 0.95) !important;
+}
+
+.compiler-hover-zone {
+  position: fixed;
+  z-index: 240;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  pointer-events: none;
+}
+
+.compiler-floating-window-controls {
+  position: fixed;
+  z-index: 245;
+  top: 10px;
+  right: 14px;
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: rgba(9, 11, 14, 0.76);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 18px 58px rgba(0, 0, 0, 0.40);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.noti-code-session-space:hover .compiler-floating-window-controls,
+.compiler-floating-window-controls:hover {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.compiler-floating-window-controls button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+}
+
+.compiler-floating-window-controls button:hover {
+  background: rgba(75, 220, 140, 0.10);
+  color: #fff;
+}
+
+.vscode-right-panel .noti-code-linked-card.full-height-card button {
+  min-height: 48px;
+}
+
+.vscode-right-panel .noti-code-run-card,
+.vscode-right-panel .noti-code-context-card,
+.vscode-right-panel .noti-code-linked-card {
+  background: rgba(8, 11, 16, 0.46) !important;
+}
+
+@media (max-width: 1120px) {
+  .vscode-session-header .noti-code-icon-button:nth-of-type(n+6) {
+    display: none;
+  }
+}
+
+/* Reminders workspace — calm secondary-sidebar layout */
+.reminders-workspace {
+  width: min(1180px, 100%);
+  height: calc(100vh - 154px);
+  margin-top: 22px;
+  align-self: stretch;
+  color: var(--text-strong);
+}
+
+.reminders-shell-v2 {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.reminders-filter-panel-v2,
+.reminders-main-panel-v2,
+.reminder-detail-panel-v2 {
+  min-height: 0;
+  border: 1px solid rgba(255, 255, 255, 0.105);
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.074), rgba(255, 255, 255, 0.028)),
+    rgba(8, 8, 10, 0.54);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.1),
+    0 24px 78px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(42px) saturate(142%);
+  -webkit-backdrop-filter: blur(42px) saturate(142%);
+}
+
+.reminders-filter-panel-v2 {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.reminders-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.reminders-filter-header strong {
+  display: block;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+}
+
+.reminders-filter-header small,
+.reminders-kicker,
+.reminder-card-copy small,
+.reminders-calendar-day em,
+.reminder-detail-empty p,
+.reminder-context-card p {
+  color: var(--text-muted);
+}
+
+.reminders-subtle-button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(255, 255, 255, 0.42);
+  cursor: pointer;
+}
+
+.reminder-smart-list-v2,
+.reminder-list-summary-v2 {
+  display: grid;
+  gap: 7px;
+}
+
+.reminder-smart-list-v2 button,
+.reminder-list-summary-v2 button {
+  min-height: 38px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.62);
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 9px;
+  padding: 0 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.reminder-smart-list-v2 button:hover,
+.reminder-list-summary-v2 button:hover {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.reminder-smart-list-v2 button strong,
+.reminder-list-summary-v2 button strong {
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.reminder-smart-list-v2 button small,
+.reminder-list-summary-v2 button small {
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.reminder-smart-list-v2 .reminder-smart-active {
+  color: rgba(255, 255, 255, 0.92);
+  border-color: rgba(92, 184, 128, 0.24);
+  background: linear-gradient(135deg, rgba(92, 184, 128, 0.15), rgba(255, 255, 255, 0.055));
+}
+
+.reminder-list-summary-v2 {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.reminder-list-summary-v2 p {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.reminders-new-list-button {
+  margin-top: 8px;
+}
+
+.reminder-list-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.65);
+}
+.reminder-list-work { background-color: rgba(92, 184, 128, 0.9) !important; }
+.reminder-list-personal { background-color: rgba(190, 190, 190, 0.9) !important; }
+.reminder-list-study { background-color: rgba(102, 166, 255, 0.9) !important; }
+.reminder-list-health { background-color: rgba(106, 210, 151, 0.9) !important; }
+.reminder-list-finance { background-color: rgba(214, 171, 82, 0.95) !important; }
+.reminder-list-noti { background-color: rgba(255, 255, 255, 0.78) !important; }
+
+.reminders-main-panel-v2 {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.reminders-main-header-v2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.reminders-kicker {
+  margin: 0 0 3px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.reminders-main-header-v2 h2 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: -0.035em;
+}
+
+.reminders-header-actions-v2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reminders-header-actions-v2 button,
+.reminders-view-select,
+.reminders-quick-bar button,
+.reminder-detail-actions button {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 780;
+}
+
+.reminders-header-actions-v2 button {
+  height: 36px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.reminders-header-actions-v2 button:last-child {
+  color: rgba(10, 12, 10, 0.94);
+  background: rgba(236, 244, 238, 0.9);
+}
+
+.reminders-view-select {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+}
+
+.reminders-view-select span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.reminders-view-select select {
+  border: 0;
+  background: transparent;
+  color: var(--text-strong);
+  outline: none;
+  color-scheme: dark;
+}
+
+.reminders-quick-bar {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.reminders-quick-bar input {
+  min-width: 0;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-strong);
+  outline: none;
+  padding: 0 14px;
+}
+
+.reminders-quick-bar button {
+  padding: 0 16px;
+  cursor: pointer;
+}
+
+.reminders-stream-v2 {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.reminders-stream-v2::-webkit-scrollbar,
+.reminder-detail-panel-v2::-webkit-scrollbar {
+  width: 8px;
+}
+.reminders-stream-v2::-webkit-scrollbar-thumb,
+.reminder-detail-panel-v2::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.reminder-group-v2 + .reminder-group-v2 {
+  margin-top: 22px;
+}
+
+.reminder-group-v2 h3 {
+  margin: 0 0 9px;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.68);
+  text-transform: uppercase;
+}
+
+.reminder-group-stack {
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  background: rgba(255, 255, 255, 0.026);
+}
+
+.reminder-card-v2 {
+  min-height: 62px;
+  padding: 11px 12px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto 34px;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  background: transparent;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.reminder-card-v2:last-child {
+  border-bottom: 0;
+}
+
+.reminder-card-v2:hover,
+.reminder-card-active {
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.reminder-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.18);
+  color: rgba(92, 184, 128, 0.95);
+  cursor: pointer;
+}
+
+.reminder-card-copy {
+  min-width: 0;
+}
+
+.reminder-card-copy strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reminder-card-copy small {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reminder-priority {
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 790;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.reminder-priority-high,
+.reminder-priority-urgent { background: rgba(214, 171, 82, 0.16); color: rgba(247, 212, 132, 0.92); }
+.reminder-priority-low { color: var(--text-muted); }
+
+.reminder-more-button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.reminders-calendar-view {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(92px, 1fr));
+  gap: 10px;
+  overflow: auto;
+}
+
+.reminders-calendar-day {
+  min-height: 360px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  background: rgba(255, 255, 255, 0.026);
+  overflow: hidden;
+}
+
+.reminders-calendar-day header {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.reminders-calendar-day header span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.reminders-calendar-day header strong {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.reminders-calendar-day > div {
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.reminders-calendar-day em {
+  font-style: normal;
+  font-size: 12px;
+}
+
+.reminder-calendar-pill {
+  min-height: 62px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  text-align: left;
+  padding: 10px;
+  color: var(--text-strong);
+  background: rgba(255, 255, 255, 0.055);
+  cursor: pointer;
+}
+
+.reminder-calendar-pill strong,
+.reminder-calendar-pill small {
+  display: block;
+}
+
+.reminder-calendar-pill small {
+  margin-top: 5px;
+  color: var(--text-muted);
+}
+
+.reminders-focus-view,
+.reminders-empty-state,
+.reminder-detail-empty {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.reminders-focus-card {
+  width: min(520px, 100%);
+  padding: 30px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.045);
+  text-align: left;
+}
+
+.reminders-focus-card h3 {
+  margin: 12px 0 8px;
+  font-size: 28px;
+  letter-spacing: -0.04em;
+}
+
+.reminders-focus-card p {
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.reminders-focus-card button {
+  margin-top: 20px;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(92, 184, 128, 0.24);
+  background: rgba(92, 184, 128, 0.16);
+  color: var(--text-strong);
+  cursor: pointer;
+}
+
+.reminder-detail-panel-v2 {
+  position: fixed;
+  top: 132px;
+  right: max(38px, calc((100vw - 1280px) / 2));
+  width: 330px;
+  max-height: calc(100vh - 176px);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: auto;
+  transform: translateX(24px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 180ms ease, opacity 180ms ease;
+  z-index: 35;
+}
+
+.reminder-detail-panel-open {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.reminder-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reminder-detail-header small {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+}
+
+.reminder-detail-header strong {
+  display: block;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.reminder-detail-header button {
+  width: 34px;
+  height: 32px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.reminder-detail-textarea {
+  min-height: 110px;
+  resize: vertical;
+  padding: 13px;
+  line-height: 1.45;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text-strong);
+  outline: none;
+}
+
+.reminder-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.reminder-detail-grid label {
+  display: grid;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.reminder-detail-grid input,
+.reminder-detail-grid select {
+  min-width: 0;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text-strong);
+  outline: none;
+  color-scheme: dark;
+}
+
+.reminder-context-card {
+  padding: 13px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.reminder-context-card strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.reminder-context-card p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.reminder-detail-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.reminder-detail-actions button {
+  min-height: 42px;
+  cursor: pointer;
+}
+
+.reminder-detail-actions .reminder-danger {
+  color: rgba(255, 166, 166, 0.96);
+}
+
+@media (max-width: 1080px) {
+  .reminders-shell-v2 {
+    grid-template-columns: 1fr;
+  }
+  .reminders-filter-panel-v2 {
+    display: none;
+  }
+  .reminders-calendar-view {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
+}
+
+/* Calendar all-features polish pass */
+.calendar-toolbar {
+  gap: 12px;
+  align-items: center;
+}
+
+.calendar-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.calendar-toolbar-actions select,
+.calendar-quick-add input,
+.calendar-quick-add button {
+  height: 36px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text-strong);
+  padding: 0 12px;
+  outline: none;
+  color-scheme: dark;
+}
+
+.calendar-toolbar-actions select {
+  max-width: 132px;
+  cursor: pointer;
+}
+
+.calendar-quick-add {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.calendar-quick-add input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.calendar-quick-add button {
+  min-width: 92px;
+  cursor: pointer;
+}
+
+.calendar-quick-add button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.calendar-density-compact .calendar-grid-wrap {
+  min-height: 640px;
+}
+
+.calendar-density-comfortable .calendar-grid-wrap {
+  min-height: 760px;
+}
+
+.calendar-density-expanded .calendar-grid-wrap {
+  min-height: 920px;
+}
+
+.calendar-slot-preview {
+  position: absolute;
+  z-index: 4;
+  border-radius: 14px;
+  border: 1px dashed rgba(180, 255, 210, 0.55);
+  background: rgba(84, 220, 145, 0.15);
+  color: rgba(220, 255, 232, 0.95);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 760;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), 0 16px 40px rgba(0,0,0,0.24);
+}
+
+.calendar-notes-editor {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  color: var(--text-strong);
+  outline: none;
+  font: inherit;
+}
+
+.calendar-context-meta {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.calendar-context-meta span {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.065);
+}
+
+.calendar-grid {
+  cursor: crosshair;
+}
+
+.calendar-event-card {
+  cursor: pointer;
+}
+
+@media (max-width: 1180px) {
+  .calendar-toolbar {
+    flex-wrap: wrap;
+  }
+  .calendar-toolbar-actions {
+    width: 100%;
+  }
+  .calendar-toolbar-actions select,
+  .calendar-add-button {
+    flex: 1;
+  }
+}
+
+
+/* Calendar simplification + scale polish */
+.workspace-brand .workspace-credit {
+  display: inline-block !important;
+  opacity: 1 !important;
+}
+
+.workspace-card.workspace-calendar .workspace-main {
+  padding-top: 46px !important;
+}
+
+.calendar-space {
+  width: min(100%, 1500px) !important;
+  height: calc(100vh - 86px) !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px) !important;
+  gap: 16px !important;
+  align-items: stretch !important;
+  font-size: 0.88rem !important;
+}
+
+.calendar-board {
+  padding: 14px 16px 16px !important;
+  border-radius: 26px !important;
+}
+
+.calendar-toolbar {
+  min-height: 40px !important;
+  grid-template-columns: minmax(260px, 1fr) auto auto !important;
+  gap: 10px !important;
+  margin-bottom: 10px !important;
+}
+
+.calendar-range-control {
+  gap: 7px !important;
+}
+
+.calendar-range-control strong {
+  min-width: 190px !important;
+  max-width: 280px !important;
+  font-size: 15px !important;
+  letter-spacing: -0.035em !important;
+}
+
+.calendar-range-control button,
+.calendar-today-button,
+.calendar-view-controls button,
+.calendar-tool-chip,
+.calendar-add-button {
+  height: 32px !important;
+  min-width: 32px !important;
+  padding: 0 10px !important;
+  border-radius: 13px !important;
+  font-size: 12px !important;
+  font-weight: 760 !important;
+  line-height: 1 !important;
+}
+
+.calendar-today-button {
+  min-width: 62px !important;
+}
+
+.calendar-view-controls {
+  padding: 3px !important;
+  border-radius: 14px !important;
+  gap: 2px !important;
+}
+
+.calendar-toolbar-actions {
+  gap: 6px !important;
+}
+
+.calendar-tool-chip {
+  border: 1px solid rgba(255,255,255,.09) !important;
+  background: rgba(255,255,255,.055) !important;
+  color: rgba(255,255,255,.74) !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.calendar-tool-chip:hover {
+  background: rgba(255,255,255,.095) !important;
+  color: rgba(255,255,255,.94) !important;
+}
+
+.calendar-add-button {
+  min-width: 96px !important;
+  background: rgba(255,255,255,.9) !important;
+  color: rgba(12,12,13,.95) !important;
+}
+
+.calendar-quick-add {
+  display: none !important;
+}
+
+.calendar-context-panel {
+  grid-template-rows: minmax(0, 1fr) !important;
+  padding: 14px !important;
+  border-radius: 28px !important;
+}
+
+.calendar-upcoming-card {
+  display: none !important;
+}
+
+.calendar-detail-card {
+  height: 100% !important;
+  padding: 16px !important;
+  border-radius: 22px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.calendar-detail-heading strong {
+  font-size: 17px !important;
+}
+
+.calendar-detail-heading p,
+.calendar-context-meta,
+.calendar-detail-note {
+  font-size: 12px !important;
+}
+
+.calendar-source-pill {
+  width: fit-content !important;
+  min-height: 26px !important;
+  padding: 0 10px !important;
+  font-size: 11px !important;
+}
+
+.calendar-detail-tabs {
+  margin-top: 16px !important;
+  gap: 16px !important;
+}
+
+.calendar-notes-editor {
+  min-height: 96px !important;
+  font-size: 13px !important;
+}
+
+.calendar-context-meta {
+  gap: 6px !important;
+  margin-top: 10px !important;
+}
+
+.calendar-context-meta span {
+  min-height: 30px !important;
+  padding: 0 10px !important;
+  border-radius: 12px !important;
+}
+
+.calendar-detail-actions,
+.calendar-edit-actions {
+  gap: 8px !important;
+}
+
+.calendar-detail-actions button,
+.calendar-edit-actions button {
+  min-height: 36px !important;
+  border-radius: 14px !important;
+  font-size: 12px !important;
+}
+
+.calendar-week-shell {
+  grid-template-rows: 42px minmax(0, 1fr) !important;
+}
+
+.calendar-week-header {
+  grid-template-columns: 48px repeat(7, minmax(68px, 1fr)) !important;
+}
+
+.calendar-day-heading {
+  gap: 7px !important;
+  font-size: 12px !important;
+}
+
+.calendar-day-heading strong {
+  width: 28px !important;
+  height: 28px !important;
+  font-size: 13px !important;
+}
+
+.calendar-time-column,
+.calendar-grid {
+  min-height: 620px !important;
+  height: 620px !important;
+}
+
+.calendar-time-column span {
+  font-size: 11px !important;
+}
+
+.calendar-event-card {
+  padding: 8px 9px !important;
+  border-radius: 12px !important;
+}
+
+.calendar-event-card strong {
+  font-size: 12px !important;
+}
+
+.calendar-event-card span {
+  font-size: 11px !important;
+}
+
+.calendar-density-compact .calendar-grid-wrap {
+  min-height: 520px !important;
+}
+
+.calendar-density-comfortable .calendar-grid-wrap {
+  min-height: 640px !important;
+}
+
+.calendar-density-expanded .calendar-grid-wrap {
+  min-height: 760px !important;
+}
+
+@media (max-width: 1280px) {
+  .calendar-space {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .calendar-context-panel {
+    position: fixed !important;
+    right: 18px !important;
+    top: 72px !important;
+    bottom: 24px !important;
+    width: min(360px, calc(100vw - 130px)) !important;
+    z-index: 220 !important;
+  }
+}
+
+
+/* Calendar final usability polish */
+.workspace-card.workspace-calendar {
+  --calendar-side-pad: 74px;
+}
+
+.workspace-card.workspace-calendar .workspace-main {
+  padding-left: var(--calendar-side-pad) !important;
+  padding-right: 18px !important;
+  align-items: stretch !important;
+}
+
+.workspace-card.workspace-calendar .workspace-topbar {
+  position: absolute !important;
+  top: 14px !important;
+  left: 16px !important;
+  right: 18px !important;
+  width: auto !important;
+  height: 36px !important;
+  pointer-events: none !important;
+  display: flex !important;
+  justify-content: space-between !important;
+}
+
+.workspace-card.workspace-calendar .workspace-brand {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+.workspace-card.workspace-calendar .workspace-credit {
+  display: inline-block !important;
+  opacity: .82 !important;
+  visibility: visible !important;
+}
+
+.calendar-space {
+  width: 100% !important;
+  max-width: none !important;
+  height: calc(100vh - 84px) !important;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 336px) !important;
+  gap: 12px !important;
+  padding-right: 0 !important;
+}
+
+.calendar-space.calendar-context-closed {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.calendar-board {
+  position: relative !important;
+  padding: 12px 14px 14px !important;
+  border-radius: 24px !important;
+  overflow: hidden !important;
+}
+
+.calendar-board-drawing {
+  cursor: crosshair !important;
+}
+
+.calendar-board-drawing::after {
+  content: "Double-click to add an annotation";
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  z-index: 20;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: rgba(215,255,228,.88);
+  background: rgba(70, 210, 126, .12);
+  border: 1px solid rgba(130,255,176,.18);
+  font-size: 11px;
+  font-weight: 750;
+  pointer-events: none;
+}
+
+.calendar-toolbar {
+  min-height: 36px !important;
+  grid-template-columns: minmax(230px, 1fr) auto auto !important;
+  gap: 8px !important;
+  margin-bottom: 8px !important;
+}
+
+.calendar-range-control {
+  gap: 6px !important;
+}
+
+.calendar-range-control strong {
+  min-width: 170px !important;
+  max-width: 260px !important;
+  font-size: 14px !important;
+}
+
+.calendar-range-control button,
+.calendar-today-button,
+.calendar-view-controls button,
+.calendar-tool-chip,
+.calendar-add-button {
+  height: 30px !important;
+  min-width: 30px !important;
+  padding: 0 9px !important;
+  border-radius: 12px !important;
+  font-size: 11px !important;
+}
+
+.calendar-today-button {
+  min-width: auto !important;
+  padding-inline: 12px !important;
+}
+
+.calendar-view-controls {
+  padding: 3px !important;
+  gap: 1px !important;
+}
+
+.calendar-toolbar-actions {
+  gap: 5px !important;
+}
+
+.calendar-tool-chip-active {
+  color: rgba(11,16,13,.96) !important;
+  background: rgba(170,255,198,.9) !important;
+  border-color: rgba(190,255,210,.45) !important;
+}
+
+.calendar-add-button {
+  min-width: 90px !important;
+}
+
+.calendar-week-shell {
+  grid-template-rows: 38px minmax(0, 1fr) !important;
+}
+
+.calendar-week-header {
+  grid-template-columns: 44px repeat(7, minmax(58px, 1fr)) !important;
+}
+
+.calendar-day-heading {
+  gap: 6px !important;
+}
+
+.calendar-day-heading span {
+  font-size: 11px !important;
+}
+
+.calendar-day-heading strong {
+  width: 26px !important;
+  height: 26px !important;
+  font-size: 12px !important;
+}
+
+.calendar-time-column,
+.calendar-grid {
+  min-height: 560px !important;
+  height: 560px !important;
+}
+
+.calendar-density-compact .calendar-time-column,
+.calendar-density-compact .calendar-grid {
+  min-height: 500px !important;
+  height: 500px !important;
+}
+
+.calendar-density-comfortable .calendar-time-column,
+.calendar-density-comfortable .calendar-grid {
+  min-height: 620px !important;
+  height: 620px !important;
+}
+
+.calendar-density-expanded .calendar-time-column,
+.calendar-density-expanded .calendar-grid {
+  min-height: 760px !important;
+  height: 760px !important;
+}
+
+.calendar-time-column span {
+  font-size: 10.5px !important;
+}
+
+.calendar-event-card {
+  padding: 7px 8px !important;
+  border-radius: 11px !important;
+}
+
+.calendar-event-card strong {
+  font-size: 11.5px !important;
+}
+
+.calendar-event-card span {
+  font-size: 10.5px !important;
+}
+
+.calendar-context-panel {
+  padding: 0 !important;
+  border-radius: 24px !important;
+  display: block !important;
+  overflow: hidden !important;
+}
+
+.calendar-detail-card {
+  height: 100% !important;
+  padding: 18px !important;
+  border: 0 !important;
+  border-radius: 24px !important;
+  background:
+    linear-gradient(180deg, rgba(28,28,29,.76), rgba(9,9,10,.6)),
+    rgba(10,10,11,.5) !important;
+  box-shadow: none !important;
+}
+
+.calendar-context-close {
+  top: 12px !important;
+  right: 12px !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 13px !important;
+}
+
+.calendar-detail-heading {
+  margin-bottom: 12px !important;
+  padding-right: 38px !important;
+}
+
+.calendar-detail-heading strong {
+  font-size: 18px !important;
+  line-height: 1.15 !important;
+}
+
+.calendar-detail-heading p {
+  margin-top: 7px !important;
+  font-size: 12px !important;
+}
+
+.calendar-detail-heading > button {
+  display: none !important;
+}
+
+.calendar-source-pill {
+  display: none !important;
+}
+
+.calendar-edit-form {
+  gap: 10px !important;
+  margin-top: 8px !important;
+}
+
+.calendar-edit-form label span {
+  font-size: 10px !important;
+  letter-spacing: .12em !important;
+}
+
+.calendar-edit-form input,
+.calendar-edit-form select,
+.calendar-edit-form textarea,
+.calendar-notes-editor {
+  min-height: 34px !important;
+  border-radius: 13px !important;
+  font-size: 12px !important;
+  padding: 0 10px !important;
+  background: rgba(255,255,255,.055) !important;
+}
+
+.calendar-edit-form textarea,
+.calendar-notes-editor {
+  min-height: 84px !important;
+  padding: 10px !important;
+}
+
+.calendar-edit-row {
+  gap: 8px !important;
+}
+
+.calendar-detail-tabs {
+  margin-top: 12px !important;
+  gap: 14px !important;
+}
+
+.calendar-context-meta {
+  margin-top: 8px !important;
+}
+
+.calendar-context-meta span {
+  min-height: 28px !important;
+  font-size: 11px !important;
+}
+
+.calendar-detail-actions,
+.calendar-edit-actions {
+  margin-top: auto !important;
+  padding-top: 10px !important;
+  gap: 8px !important;
+}
+
+.calendar-detail-actions button,
+.calendar-edit-actions button {
+  min-height: 34px !important;
+  height: 34px !important;
+  border-radius: 13px !important;
+  font-size: 11.5px !important;
+}
+
+.calendar-annotation {
+  position: absolute;
+  z-index: 21;
+  transform: translate(-50%, -50%);
+  max-width: 180px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(178,255,205,.24);
+  color: rgba(225,255,235,.96);
+  background: rgba(74, 210, 125, .14);
+  box-shadow: 0 14px 34px rgba(0,0,0,.25), inset 0 1px rgba(255,255,255,.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  font-size: 11px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.calendar-annotation:hover {
+  background: rgba(255, 95, 95, .16);
+  border-color: rgba(255, 140, 140, .32);
+}
+
+.calendar-month-shell {
+  gap: 6px !important;
+  grid-auto-rows: minmax(72px, 1fr) !important;
+}
+
+.calendar-month-cell {
+  padding: 8px !important;
+  border-radius: 14px !important;
+}
+
+.calendar-agenda-item {
+  min-height: 54px !important;
+  padding: 10px 12px !important;
+  border-radius: 14px !important;
+}
+
+@media (max-width: 1260px) {
+  .workspace-card.workspace-calendar {
+    --calendar-side-pad: 66px;
+  }
+
+  .calendar-space {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .calendar-context-panel {
+    position: fixed !important;
+    top: 64px !important;
+    right: 16px !important;
+    bottom: 20px !important;
+    width: min(330px, calc(100vw - 104px)) !important;
+    z-index: 260 !important;
+  }
+
+  .calendar-toolbar {
+    grid-template-columns: minmax(220px, 1fr) auto !important;
+  }
+
+  .calendar-toolbar-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
   }
 }
