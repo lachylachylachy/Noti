@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionEnd": [
+      {
+        "command": ".cursor/hooks/patch-notes.sh",
+        "timeout": 15,
+        "failClosed": false
+      }
+    ]
+  }
+}
+

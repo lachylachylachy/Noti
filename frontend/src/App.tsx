@@ -8,9 +8,60 @@ import {
 } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./App.css";
-
-type Priority = "Low" | "Medium" | "High" | "Urgent";
-type MessageKind = "note" | "calendar_question" | "meta_prompt" | "ack";
+import AppleIntegrationTest from "./components/AppleIntegrationTest";
+import type {
+  AppEnvironment,
+  MessageKind,
+  NoteThread,
+  Priority,
+  WorkspaceName,
+} from "./types/thread";
+import {
+  loadThreads,
+  saveThreads,
+} from "./services/threads/storage";
+import { createMessage } from "./services/threads/messages";
+import {
+  SPACE_CATALOG,
+  getSpaceDefinition,
+  loadEnabledSpaces,
+  saveEnabledSpaces,
+} from "./services/workspaces/spaces";
+import {
+  addMinutesToTime,
+  formatDateLong,
+  formatHourLabel,
+  formatTimeLabel,
+  getMonday,
+  minutesToHeight,
+  minutesToTime,
+  minutesToTop,
+  normalizeTimeInput,
+  timeToMinutes,
+  toISODate,
+} from "./services/calendar/utils";
+import {
+  loadCalendarAnnotations,
+  loadCalendarEvents,
+  loadRecord,
+  loadStringList,
+} from "./services/calendar/storage";
+import type {
+  ReminderFilter,
+  ReminderItem,
+  ReminderViewMode,
+} from "./services/reminders/model";
+import {
+  REMINDER_LISTS,
+  REMINDER_STORAGE_KEY,
+} from "./services/reminders/model";
+import {
+  compareReminders,
+  groupReminders,
+  normaliseReminderList,
+  parseReminderText,
+} from "./services/reminders/utils";
+import { buildDefaultReminders, loadReminders } from "./services/reminders/storage";
 
 type CalendarDraft = {
   dueDate: string;
@@ -18,42 +69,7 @@ type CalendarDraft = {
   priority: Priority;
   category: string;
 };
-type WorkspaceName =
-  | "Notes"
-  | "Today"
-  | "Calendar"
-  | "Reminders"
-  | "Projects"
-  | "Tasks"
-  | "Files"
-  | "Meetings"
-  | "Knowledge";
 
-type AppEnvironment = "noti" | "code";
-
-type ThreadMessage = {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-  kind: MessageKind;
-  typing?: boolean;
-  createdAt: string;
-};
-
-type NoteThread = {
-  id: number;
-  title: string;
-  category: string;
-  priority: Priority;
-  dueDate: string;
-  dueTime: string;
-  createdAt: string;
-  updatedAt: string;
-  messages: ThreadMessage[];
-};
-
-const THREADS_STORAGE_KEY = "noti-threads-v3-option1";
-const ENABLED_SPACES_STORAGE_KEY = "noti-enabled-spaces-v1";
 const PRIORITIES: Priority[] = ["Low", "Medium", "High", "Urgent"];
 const CATEGORIES = [
   "Unassigned",
@@ -78,107 +94,6 @@ function getDefaultCalendarDraft(): CalendarDraft {
     category: "Unassigned",
   };
 }
-const REQUIRED_SPACES: WorkspaceName[] = ["Notes"];
-
-const SPACE_CATALOG: Array<{
-  name: WorkspaceName;
-  label: string;
-  description: string;
-  status: "ready" | "concept";
-}> = [
-  {
-    name: "Today",
-    label: "Today",
-    description: "Daily notes, reminders, and active priorities.",
-    status: "ready",
-  },
-  {
-    name: "Calendar",
-    label: "Calendar",
-    description: "Time-blocked notes and scheduled reminders.",
-    status: "ready",
-  },
-  {
-    name: "Reminders",
-    label: "Reminders",
-    description: "Lightweight follow-ups grouped by time.",
-    status: "ready",
-  },
-  {
-    name: "Projects",
-    label: "Projects",
-    description: "Grouped threads, project context, and active workstreams.",
-    status: "ready",
-  },
-  {
-    name: "Tasks",
-    label: "Tasks",
-    description: "Simple action lists separate from calendar commitments.",
-    status: "concept",
-  },
-  {
-    name: "Files",
-    label: "Files",
-    description: "Attach documents, screenshots, and workspace references.",
-    status: "concept",
-  },
-  {
-    name: "Meetings",
-    label: "Meetings",
-    description: "Meeting notes, decisions, and follow-up summaries.",
-    status: "concept",
-  },
-  {
-    name: "Knowledge",
-    label: "Knowledge",
-    description: "A calm internal wiki for reusable notes and decisions.",
-    status: "concept",
-  },
-];
-
-function createMessage(
-  role: "user" | "assistant",
-  text: string,
-  kind: MessageKind,
-  typing = false,
-): ThreadMessage {
-  return {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    role,
-    text,
-    kind,
-    typing,
-    createdAt: new Date().toLocaleString(),
-  };
-}
-
-function normaliseThread(thread: Partial<NoteThread>): NoteThread {
-  const now = new Date().toLocaleString();
-
-  return {
-    id: thread.id ?? Date.now(),
-    title: thread.title ?? "Untitled Note",
-    category: thread.category ?? "Unassigned",
-    priority: thread.priority ?? "Medium",
-    dueDate: thread.dueDate ?? "",
-    dueTime: thread.dueTime ?? "",
-    createdAt: thread.createdAt ?? now,
-    updatedAt: thread.updatedAt ?? now,
-    messages: Array.isArray(thread.messages)
-      ? thread.messages.map((message) => ({
-          id:
-            message.id ??
-            `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          role: message.role === "assistant" ? "assistant" : "user",
-          text: message.text ?? "",
-          kind: message.kind ?? "note",
-          typing: Boolean(message.typing),
-          createdAt: message.createdAt ?? now,
-        }))
-      : [],
-  };
-}
-
 function App() {
   const appWindow = getCurrentWindow();
   const mainInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -196,22 +111,7 @@ function App() {
   const [activeWorkspace, setActiveWorkspace] =
     useState<WorkspaceName>("Notes");
   const [enabledSpaces, setEnabledSpaces] = useState<WorkspaceName[]>(() => {
-    try {
-      const saved = localStorage.getItem(ENABLED_SPACES_STORAGE_KEY);
-      const parsed = saved ? JSON.parse(saved) : null;
-      return Array.isArray(parsed) && parsed.length > 0
-        ? [
-            "Notes",
-            ...parsed.filter(
-              (space): space is WorkspaceName =>
-                space !== "Notes" &&
-                SPACE_CATALOG.some((catalogSpace) => catalogSpace.name === space),
-            ),
-          ]
-        : REQUIRED_SPACES;
-    } catch {
-      return REQUIRED_SPACES;
-    }
+    return loadEnabledSpaces();
   });
   const [addSpaceOpen, setAddSpaceOpen] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState<WorkspaceName | null>(null);
@@ -221,14 +121,7 @@ function App() {
   const [selectedThreadId, setSelectedThreadId] = useState<number | null>(null);
   const [calendarDrafts, setCalendarDrafts] = useState<Record<number, CalendarDraft>>({});
 
-  const [threads, setThreads] = useState<NoteThread[]>(() => {
-    try {
-      const saved = localStorage.getItem(THREADS_STORAGE_KEY);
-      return saved ? JSON.parse(saved).map(normaliseThread) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [threads, setThreads] = useState<NoteThread[]>(() => loadThreads());
 
   const hasThreads = threads.length > 0;
   const selectedThread =
@@ -247,14 +140,11 @@ function App() {
   );
 
   useEffect(() => {
-    localStorage.setItem(THREADS_STORAGE_KEY, JSON.stringify(threads));
+    saveThreads(threads);
   }, [threads]);
 
   useEffect(() => {
-    localStorage.setItem(
-      ENABLED_SPACES_STORAGE_KEY,
-      JSON.stringify(enabledSpaces),
-    );
+    saveEnabledSpaces(enabledSpaces);
   }, [enabledSpaces]);
 
   useEffect(() => {
@@ -1249,23 +1139,7 @@ function getGreeting() {
 }
 
 function getSpaceOption(workspace: WorkspaceName) {
-  if (workspace === "Notes") {
-    return {
-      name: "Notes" as WorkspaceName,
-      label: "Notes",
-      description: "Conversation-first note capture.",
-      status: "ready" as const,
-    };
-  }
-
-  return (
-    SPACE_CATALOG.find((space) => space.name === workspace) ?? {
-      name: workspace,
-      label: workspace,
-      description: "Workspace",
-      status: "concept" as const,
-    }
-  );
+  return getSpaceDefinition(workspace);
 }
 
 
@@ -2020,71 +1894,6 @@ function CalendarWorkspace({ threads }: { threads: NoteThread[] }) {
   );
 }
 
-function loadCalendarAnnotations(key: string) {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(key) ?? "[]");
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function getMonday(date: Date) {
-  const monday = new Date(date);
-  const dayOffset = (monday.getDay() + 6) % 7;
-  monday.setDate(monday.getDate() - dayOffset);
-  monday.setHours(0, 0, 0, 0);
-  return monday;
-}
-
-function toISODate(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function formatHourLabel(hour: number) {
-  if (hour === 0) return "12 AM";
-  if (hour === 12) return "12 PM";
-  return hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
-}
-
-function timeToMinutes(value: string) {
-  const normalized = normalizeTimeInput(value);
-  const [hours, minutes] = normalized.split(":").map(Number);
-  return hours * 60 + minutes;
-}
-
-function normalizeTimeInput(value: string) {
-  if (!value) return "12:00";
-  const trimmed = value.trim().toLowerCase();
-  const ampmMatch = trimmed.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);
-  if (ampmMatch) {
-    let hours = Number(ampmMatch[1]);
-    const minutes = Number(ampmMatch[2] ?? "0");
-    if (ampmMatch[3] === "pm" && hours !== 12) hours += 12;
-    if (ampmMatch[3] === "am" && hours === 12) hours = 0;
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-  }
-
-  const [rawHours, rawMinutes = "00"] = trimmed.split(":");
-  const hours = Math.min(Math.max(Number(rawHours) || 0, 0), 23);
-  const minutes = Math.min(Math.max(Number(rawMinutes) || 0, 0), 59);
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-}
-
-function addMinutesToTime(value: string, amount: number) {
-  const total = Math.min(Math.max(timeToMinutes(value) + amount, 0), 23 * 60 + 59);
-  return minutesToTime(total);
-}
-
-function minutesToTime(totalMinutes: number) {
-  const total = Math.min(Math.max(totalMinutes, 0), 23 * 60 + 59);
-  const hours = Math.floor(total / 60);
-  const minutes = total % 60;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-}
 
 function parseCalendarQuickText(value: string, baseDate: Date) {
   const text = value.trim();
@@ -2126,31 +1935,6 @@ function parseCalendarQuickText(value: string, baseDate: Date) {
   };
 }
 
-function minutesToTop(minutes: number, startHour: number, endHour: number) {
-  const start = startHour * 60;
-  const total = (endHour - startHour) * 60;
-  return Math.min(Math.max(((minutes - start) / total) * 100, 0), 100);
-}
-
-function minutesToHeight(minutes: number, startHour: number, endHour: number) {
-  const total = (endHour - startHour) * 60;
-  return Math.min(Math.max((minutes / total) * 100, 4.5), 100);
-}
-
-function formatTimeLabel(value: string) {
-  const [hours, minutes] = normalizeTimeInput(value).split(":").map(Number);
-  const suffix = hours >= 12 ? "PM" : "AM";
-  const displayHours = hours % 12 || 12;
-  return `${displayHours}:${String(minutes).padStart(2, "0")} ${suffix}`;
-}
-
-function formatDateShort(value: string) {
-  return new Date(`${value}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric" });
-}
-
-function formatDateLong(value: string) {
-  return new Date(`${value}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-}
 
 function toEventDraft(event: {
   title: string;
@@ -2174,82 +1958,17 @@ function toEventDraft(event: {
   };
 }
 
-function loadCalendarEvents(key: string): any[] {
-  const fallback = buildBaseCalendarEvents();
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : fallback;
-  } catch {
-    return fallback;
-  }
-}
 
-function loadStringList(key: string) {
-  try {
-    const raw = localStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-function loadRecord(key: string) {
-  try {
-    const raw = localStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : {};
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, string> : {};
-  } catch {
-    return {};
-  }
-}
-
-function buildBaseCalendarEvents(): any[] {
-  const monday = getMonday(new Date());
-  const dateFor = (offset: number) => {
-    const date = new Date(monday);
-    date.setDate(monday.getDate() + offset);
-    return toISODate(date);
-  };
-
-  return [
-    { id: "team-orlando", title: "Team Orlando", date: dateFor(0), start: "09:00", end: "10:00", tone: "stone", source: "calendar", notes: "Weekly project sync." },
-    { id: "product-review", title: "Product Review", date: dateFor(1), start: "10:00", end: "11:00", tone: "slate", source: "calendar", notes: "Review current product flow and open decisions." },
-    { id: "design-sync", title: "Design Sync", date: dateFor(2), start: "11:30", end: "12:30", tone: "violet", source: "calendar", notes: "Linked Noti context for design discussion." },
-    { id: "client-call", title: "Client Call", date: dateFor(3), start: "09:30", end: "10:30", tone: "lavender", source: "calendar", notes: "Prepare notes before joining." },
-    { id: "deep-work", title: "Deep Work", date: dateFor(4), start: "14:30", end: "16:00", tone: "green", source: "calendar", notes: "Focus block." },
-    { id: "dinner", title: "Dinner with Skye", date: dateFor(5), start: "19:00", end: "20:30", tone: "purple", source: "calendar", notes: "Personal event." },
-    { id: "gym", title: "Gym", date: dateFor(0), start: "17:00", end: "18:15", tone: "amber", source: "calendar", notes: "Training block." },
-  ];
-}
-
-
-type ReminderItem = {
-  id: string;
-  title: string;
-  detail: string;
-  date: string;
-  time: string;
-  list: "Personal" | "Work" | "Study" | "Health" | "Finance" | "Noti";
-  priority: Priority;
-  completed: boolean;
-  linkedThreadId?: number;
-};
-
-const REMINDER_LISTS: ReminderItem["list"][] = ["Personal", "Work", "Study", "Health", "Finance", "Noti"];
-const REMINDER_STORAGE_KEY = "noti-reminders-stable-v1";
+// Reminder domain types/constants are now in services/reminders.
 
 function RemindersWorkspace({ threads }: { threads: NoteThread[] }) {
-  type ReminderFilter = "All Reminders" | "Today" | "Tomorrow" | "This Week" | "Overdue" | "Completed";
-  type ReminderViewMode = "List" | "Calendar" | "Focus";
-
   const [filter, setFilter] = useState<ReminderFilter>("This Week");
   const [viewMode, setViewMode] = useState<ReminderViewMode>("List");
   const [quickText, setQuickText] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [reminders, setReminders] = useState<ReminderItem[]>(() => getInitialReminders());
+  const [reminders, setReminders] = useState<ReminderItem[]>(() =>
+    loadReminders(REMINDER_STORAGE_KEY, buildDefaultReminders),
+  );
 
   useEffect(() => {
     try {
@@ -2582,126 +2301,7 @@ function RemindersWorkspace({ threads }: { threads: NoteThread[] }) {
   );
 }
 
-function getInitialReminders(): ReminderItem[] {
-  try {
-    const saved = localStorage.getItem(REMINDER_STORAGE_KEY);
-    const parsed = saved ? JSON.parse(saved) : null;
-    if (Array.isArray(parsed)) return parsed.filter(isReminderItem);
-  } catch {
-    // Use defaults below.
-  }
-
-  const today = new Date();
-  const tomorrow = new Date();
-  tomorrow.setDate(today.getDate() + 1);
-  const later = new Date();
-  later.setDate(today.getDate() + 5);
-
-  return [
-    {
-      id: "review-deployment",
-      title: "Review deployment plan",
-      detail: "Go through the checklist and update any blockers.",
-      date: toISODate(today),
-      time: "10:00",
-      list: "Work",
-      priority: "High",
-      completed: false,
-    },
-    {
-      id: "project-standup",
-      title: "Project standup",
-      detail: "Bring current decisions and next actions.",
-      date: toISODate(tomorrow),
-      time: "09:30",
-      list: "Work",
-      priority: "Medium",
-      completed: false,
-    },
-    {
-      id: "study-exam",
-      title: "Study for exam",
-      detail: "Review notes and practice questions.",
-      date: toISODate(later),
-      time: "14:00",
-      list: "Study",
-      priority: "Medium",
-      completed: false,
-    },
-  ];
-}
-
-function isReminderItem(value: unknown): value is ReminderItem {
-  const item = value as ReminderItem;
-  return Boolean(item && typeof item.id === "string" && typeof item.title === "string" && typeof item.date === "string");
-}
-
-function compareReminders(a: ReminderItem, b: ReminderItem) {
-  const dateCompare = a.date.localeCompare(b.date);
-  if (dateCompare !== 0) return dateCompare;
-  return timeToMinutes(a.time) - timeToMinutes(b.time);
-}
-
-function normaliseReminderList(category: string): ReminderItem["list"] {
-  const normalized = category.toLowerCase();
-  if (normalized.includes("work") || normalized.includes("project")) return "Work";
-  if (normalized.includes("study")) return "Study";
-  if (normalized.includes("health")) return "Health";
-  if (normalized.includes("finance")) return "Finance";
-  if (normalized.includes("personal")) return "Personal";
-  return "Noti";
-}
-
-function parseReminderText(text: string) {
-  const source = text.trim();
-  const now = new Date();
-  const dueDate = new Date(now);
-  const lower = source.toLowerCase();
-
-  if (lower.includes("tomorrow")) dueDate.setDate(now.getDate() + 1);
-  if (lower.includes("next week") || lower.includes("this week")) dueDate.setDate(now.getDate() + 5);
-
-  const timeMatch = lower.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/);
-  const time = timeMatch ? normalizeTimeInput(timeMatch[0]) : "09:00";
-  const priority: Priority = lower.includes("urgent") ? "Urgent" : lower.includes("high") ? "High" : lower.includes("low") ? "Low" : "Medium";
-  const list: ReminderItem["list"] = lower.includes("study") ? "Study" : lower.includes("gym") || lower.includes("health") ? "Health" : lower.includes("pay") || lower.includes("bill") ? "Finance" : lower.includes("work") || lower.includes("deploy") ? "Work" : "Personal";
-  const cleaned = source
-    .replace(/remind me to/i, "")
-    .replace(/tomorrow|next week|this week|high priority|urgent|low priority/gi, "")
-    .replace(/\d{1,2}(?::\d{2})?\s*(am|pm)/gi, "")
-    .trim();
-
-  const title = cleaned || "New reminder";
-
-  return {
-    title: title.charAt(0).toUpperCase() + title.slice(1),
-    detail: source,
-    date: toISODate(dueDate),
-    time,
-    priority,
-    list,
-  };
-}
-
-function groupReminders(items: ReminderItem[], todayIso: string, tomorrowIso: string) {
-  const groups = new Map<string, ReminderItem[]>();
-  for (const item of items) {
-    const label = item.completed
-      ? "Completed"
-      : item.date === todayIso
-        ? "Today"
-        : item.date === tomorrowIso
-          ? "Tomorrow"
-          : item.date > tomorrowIso
-            ? "Upcoming"
-            : "Earlier";
-    groups.set(label, [...(groups.get(label) ?? []), item]);
-  }
-
-  return ["Today", "Tomorrow", "Upcoming", "Earlier", "Completed"]
-    .filter((label) => groups.has(label))
-    .map((label) => ({ label, items: groups.get(label) ?? [] }));
-}
+// Reminder domain storage/helpers are now in services/reminders.
 
 function getReminderFilterIcon(item: string) {
   switch (item) {
@@ -3941,7 +3541,8 @@ function WorkspacePreview({
             {"This space is now wired into the sidebar and ready for deeper UI next."}
           </p>
         </article>
-      </div>
+              <AppleIntegrationTest />
+</div>
     </section>
   );
 }
